@@ -1,0 +1,26 @@
+# Node
+**/node_modules
+frontend/dist
+
+# Python
+**/__pycache__
+**/*.pyc
+**/venv
+**/.venv
+
+# Env / secrets
+**/.env
+**/.env.*
+
+# Git / IDE
+.git
+.gitignore
+.vscode
+
+# Build previo del frontend (se genera en la imagen)
+backend/static
+
+# DB local (se re-seedea en el build con seed_data.py)
+**/*.db
+**/*.sqlite
+**/*.sqlite3

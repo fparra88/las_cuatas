@@ -1,0 +1,97 @@
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+import enum
+
+Base = declarative_base()
+
+class EstadoMesa(str, enum.Enum):
+    DISPONIBLE = "disponible"
+    OCUPADA = "ocupada"
+
+class EstadoPedido(str, enum.Enum):
+    PENDIENTE = "pendiente"
+
+class EstadoCobro(str, enum.Enum):
+    COMPLETADO = "completado"
+
+class Mesa(Base):
+    __tablename__ = "mesas"
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(Integer, unique=True)
+    capacidad = Column(Integer)
+    tipo = Column(String, default="mesa")
+    estado = Column(Enum(EstadoMesa), default=EstadoMesa.DISPONIBLE)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+class Producto(Base):
+    __tablename__ = "productos"
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, index=True)
+    categoria = Column(String)
+    precio = Column(Float)
+    icono = Column(String, nullable=True)
+    activo = Column(Integer, default=1)
+
+class Comensal(Base):
+    __tablename__ = "comensales"
+    id = Column(Integer, primary_key=True, index=True)
+    mesa_id = Column(Integer, ForeignKey("mesas.id"))
+    nombre = Column(String)
+    activo = Column(Integer, default=1)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+class Pedido(Base):
+    __tablename__ = "pedidos"
+    id = Column(Integer, primary_key=True, index=True)
+    mesa_id = Column(Integer, ForeignKey("mesas.id"), nullable=True)
+    comensal_id = Column(Integer, ForeignKey("comensales.id"), nullable=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"))
+    cantidad = Column(Integer)
+    precio_unitario = Column(Float)
+    estado = Column(Enum(EstadoPedido), default=EstadoPedido.PENDIENTE)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+class Cobro(Base):
+    __tablename__ = "cobros"
+    id = Column(Integer, primary_key=True, index=True)
+    mesa_id = Column(Integer, ForeignKey("mesas.id"), nullable=True)
+    comensal_id = Column(Integer, ForeignKey("comensales.id"), nullable=True)
+    total = Column(Float)
+    metodo_pago = Column(String)
+    estado = Column(Enum(EstadoCobro), default=EstadoCobro.COMPLETADO)
+    fecha_hora = Column(DateTime, default=datetime.utcnow)
+
+class Gasto(Base):
+    __tablename__ = "gastos"
+    id = Column(Integer, primary_key=True, index=True)
+    descripcion = Column(String)
+    monto = Column(Float)
+    fecha_hora = Column(DateTime, default=datetime.utcnow)
+
+class OrdenLlevar(Base):
+    __tablename__ = "ordenes_llevar"
+    id = Column(Integer, primary_key=True, index=True)
+    total = Column(Float)
+    metodo_pago = Column(String)
+    fecha_hora = Column(DateTime, default=datetime.utcnow)
+
+class OrdenLlevarItem(Base):
+    __tablename__ = "ordenes_llevar_items"
+    id = Column(Integer, primary_key=True, index=True)
+    orden_id = Column(Integer, ForeignKey("ordenes_llevar.id"))
+    producto_nombre = Column(String)
+    cantidad = Column(Integer)
+    precio_unitario = Column(Float)
+
+class CierreCaja(Base):
+    __tablename__ = "cierres_caja"
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(String, index=True)          # YYYY-MM-DD del corte
+    ingresos = Column(Float)
+    gastos = Column(Float)
+    efectivo_bruto = Column(Float)
+    efectivo_neto = Column(Float)               # efectivo - gastos
+    tarjeta = Column(Float)                      # informativo
+    neto = Column(Float)
+    creado_en = Column(DateTime, default=datetime.utcnow)

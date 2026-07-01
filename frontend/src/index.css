@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {font-family: system-ui; margin: 0; padding: 0;}
+
+/* ===== TICKET TÉRMICO 2" (58mm) ===== */
+.ticket {
+  width: 58mm;
+  padding: 2mm 2mm 4mm;
+  box-sizing: border-box;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.ticket-logo {
+  display: block;
+  width: 70%;
+  max-width: 40mm;
+  margin: 0 auto 2mm;
+}
+.ticket-nombre { text-align: center; font-weight: 700; font-size: 14px; }
+.ticket-center { text-align: center; }
+.ticket-sm { font-size: 10px; }
+.ticket-bold { font-weight: 700; }
+.ticket-sep { border-top: 1px dashed #000; margin: 2mm 0; }
+.ticket-item { margin-bottom: 1.5mm; }
+.ticket-item-nombre { font-weight: 700; }
+.ticket-item-linea { display: flex; justify-content: space-between; }
+.ticket-total {
+  display: flex; justify-content: space-between;
+  font-weight: 700; font-size: 14px;
+}
+
+/* Oculto en pantalla, solo aparece al imprimir */
+.print-only { position: absolute; left: -9999px; top: 0; }
+
+/* ===== IMPRESIÓN: solo el ticket ===== */
+@media print {
+  body * { visibility: hidden; }
+  #ticket-area, #ticket-area * { visibility: visible; }
+  #ticket-area {
+    position: absolute; left: 0; top: 0;
+    width: 58mm; padding: 0;
+  }
+  .no-print { display: none !important; }
+}
+@page { size: 58mm auto; margin: 0; }
