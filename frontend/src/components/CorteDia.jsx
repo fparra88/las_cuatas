@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 import logo from '../imagenes/logo.png'
 import { TICKET_CONFIG } from '../ticketConfig'
+import { printTicket } from '../printTicket'
 
 export default function CorteDia({ onClose }) {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
@@ -42,7 +43,7 @@ export default function CorteDia({ onClose }) {
   // Tras render del ticket -> imprime y cierra.
   useEffect(() => {
     if (!imprimir) return
-    const t = setTimeout(() => { window.print(); onClose() }, 100)
+    const t = setTimeout(async () => { await printTicket(); onClose() }, 100)
     return () => clearTimeout(t)
   }, [imprimir])
 

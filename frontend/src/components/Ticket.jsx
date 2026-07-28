@@ -1,6 +1,7 @@
 import React from 'react'
 import logo from '../imagenes/logo.png'
 import { TICKET_CONFIG } from '../ticketConfig'
+import { printTicket } from '../printTicket'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 
@@ -15,7 +16,7 @@ const fmt = (n) => Number(n || 0).toFixed(2)
 export default function Ticket({ subtitulo, items = [], total = 0, metodo, onDone, doneLabel = '✅ OK' }) {
   const fecha = new Date()
   return (
-    <div className="min-h-screen bg-transparent p-6 flex flex-col items-center">
+    <div className="min-h-screen bg-transparent p-6 flex flex-col items-center print:min-h-0 print:p-0 print:m-0 print:block">
       {/* Área imprimible */}
       <div id="ticket-area" className="ticket bg-white text-black">
         <img src={logo} alt="logo" className="ticket-logo" />
@@ -64,7 +65,7 @@ export default function Ticket({ subtitulo, items = [], total = 0, metodo, onDon
 
       {/* Botones — no se imprimen */}
       <div className="no-print w-full max-w-xs mt-6">
-        <button onClick={() => window.print()} className="w-full bg-blue-600 text-white font-bold py-3 mb-2 rounded">🖨️ Imprimir</button>
+        <button onClick={printTicket} className="w-full bg-blue-600 text-white font-bold py-3 mb-2 rounded">🖨️ Imprimir</button>
         {onDone && <button onClick={onDone} className="w-full bg-green-600 text-white font-bold py-3 rounded">{doneLabel}</button>}
       </div>
     </div>
