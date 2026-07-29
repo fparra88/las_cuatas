@@ -1,7 +1,8 @@
-// Impresión de tickets térmicos 58mm (rollo físico POS-58).
+// Impresión de tickets térmicos POS-58 (rollo 58mm, ancho útil 50mm: el
+// cabezal solo cubre ~48mm, maquetar a 58mm corta el borde derecho).
 //
 // El navegador decide cuántas hojas genera a partir del tamaño de página
-// declarado en @page. Chrome ignora `size: 58mm auto` y usa la altura del papel
+// declarado en @page. Chrome ignora `size: 50mm auto` y usa la altura del papel
 // por defecto (Carta ~279mm), lo que produce hojas casi vacías y un salto a una
 // segunda página. Para forzar UNA sola página se mide la altura real del ticket
 // y se inyecta un @page con esa altura exacta antes de llamar a window.print().
@@ -44,7 +45,7 @@ export async function printTicket() {
     limpiarEstilo()
     const style = document.createElement('style')
     style.id = STYLE_ID
-    style.textContent = `@page { size: 58mm ${altoMm}mm; margin: 0; }`
+    style.textContent = `@page { size: 50mm ${altoMm}mm; margin: 0; }`
     document.head.appendChild(style)
   }
 

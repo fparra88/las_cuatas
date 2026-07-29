@@ -3,14 +3,17 @@
 @tailwind utilities;
 body {font-family: system-ui; margin: 0; padding: 0;}
 
-/* ===== TICKET TÉRMICO 58mm (rollo físico POS-58) ===== */
+/* ===== TICKET TÉRMICO POS-58 =====
+   El rollo mide 58mm pero el cabezal solo imprime ~48mm (384 puntos a 203dpi).
+   Maquetar a 58mm corta el borde derecho, por eso el ancho util es 50mm. */
 .ticket {
-  width: 58mm;
+  width: 50mm;
   padding: 2mm 2mm 4mm;
   box-sizing: border-box;
   font-family: 'Courier New', monospace;
   font-size: 11px;
   line-height: 1.25;
+  
 }
 .ticket-logo {
   display: block;
@@ -44,16 +47,16 @@ body {font-family: system-ui; margin: 0; padding: 0;}
 .print-only { position: absolute; left: -9999px; top: 0; }
 
 
-/* ===== IMPRESIÓN: solo el ticket (térmica 58mm) ===== */
+/* ===== IMPRESIÓN: solo el ticket (POS-58, ancho útil 50mm) ===== */
 
 /* Fallback. printTicket() sobreescribe esto con la altura real del ticket
    justo antes de imprimir, para que salga exactamente UNA página. */
-@page { size: 58mm auto; margin: 0; }
+@page { size: 50mm auto; margin: 0; }
 
 @media print {
 
   html, body {
-    width: 58mm !important;
+    width: 50mm !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -78,7 +81,7 @@ body {font-family: system-ui; margin: 0; padding: 0;}
     position: static !important;
     inset: auto !important;
     transform: none !important;
-    width: 58mm !important;
+    width: 50mm !important;
     max-width: none !important;
     min-width: 0 !important;
     height: auto !important;
@@ -98,7 +101,7 @@ body {font-family: system-ui; margin: 0; padding: 0;}
     position: static !important;
     left: auto !important;
     top: auto !important;
-    width: 58mm !important;
+    width: 50mm !important;
     padding: 1mm 2mm 3mm !important;
     margin: 0 !important;
     box-shadow: none !important;

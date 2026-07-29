@@ -6,7 +6,7 @@ import TicketQR from './TicketQR'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 
-// Ticket reutilizable formato 2" (58mm) para impresora térmica.
+// Ticket reutilizable para impresora térmica POS-58 (rollo 58mm, ancho útil 50mm).
 // Props:
 //  subtitulo  -> texto bajo encabezado (ej "Mesa #5", "Barra 2 — Juan", "Para Llevar #12")
 //  items      -> [{nombre, cantidad, precio_unitario, subtotal, icono?}]
