@@ -11,6 +11,9 @@ router = APIRouter(prefix="/api/para-llevar", tags=["para-llevar"])
 class ItemIn(BaseModel):
     producto_id: int
     cantidad: int
+    # Solo para productos editables: sobrescriben nombre/precio de ESA linea.
+    nombre_personalizado: Optional[str] = None
+    precio_unitario: Optional[float] = None
 
 class OrdenIn(BaseModel):
     items: List[ItemIn]
@@ -24,8 +27,16 @@ def crear_orden(data: OrdenIn, db: Session = Depends(get_db)):
         p = db.query(Producto).filter(Producto.id == item.producto_id).first()
         if not p:
             raise HTTPException(status_code=404, detail=f"Producto {item.producto_id} no encontrado")
-        total += p.precio * item.cantidad
-        items_build.append(OrdenLlevarItem(producto_nombre=p.nombre, cantidad=item.cantidad, precio_unitario=p.precio))
+        # Nombre/precio libres solo si el catalogo marca el producto editable.
+        if p.editable:
+            nombre = (item.nombre_personalizado or "").strip() or p.nombre
+            precio = item.precio_unitario if item.precio_unitario is not None else p.precio
+            if precio < 0:
+                raise HTTPException(status_code=400, detail="Precio invalido")
+        else:
+            nombre, precio = p.nombre, p.precio
+        total += precio * item.cantidad
+        items_build.append(OrdenLlevarItem(producto_nombre=nombre, cantidad=item.cantidad, precio_unitario=precio))
     orden = OrdenLlevar(total=total, metodo_pago=data.metodo_pago)
     db.add(orden)
     db.flush()

@@ -18,6 +18,7 @@ class Producto(BaseModel):
     precio: float
     icono: Optional[str] = None
     activo: int
+    editable: int = 0
     class Config:
         from_attributes = True
 
@@ -26,6 +27,13 @@ class PedidoCreate(BaseModel):
     comensal_id: Optional[int] = None
     producto_id: int
     cantidad: int
+    # Solo para productos editables: sobrescriben nombre/precio de ESA linea.
+    nombre_personalizado: Optional[str] = None
+    precio_unitario: Optional[float] = None
+
+class PedidoEditar(BaseModel):
+    nombre_personalizado: Optional[str] = None
+    precio_unitario: Optional[float] = None
 
 class PedidoDetalle(BaseModel):
     id: int

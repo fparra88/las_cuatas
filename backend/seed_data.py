@@ -69,10 +69,11 @@ productos = [
     {"nombre": "Pollo Vegetariano sin Agua (local)", "categoria": "Pollo Vegetariano", "precio": 110.00, "icono": "🥗"},
     {"nombre": "Pollo Vegetariano sin Agua (para llevar)", "categoria": "Pollo Vegetariano", "precio": 120.00, "icono": "🥗"},
 
-    # MENUDO
-    {"nombre": "Menudo Grande", "categoria": "Menudo", "precio": 120.00, "icono": "🍜"},
-    {"nombre": "Menudo Mediano", "categoria": "Menudo", "precio": 110.00, "icono": "🍜"},
-
+    # SANDWICHES        
+    {"nombre": "Sandwich de Jamón", "categoria": "Sandwiches", "precio": 35.00, "icono": "🥪"},
+    {"nombre": "Sandwich de Panela", "categoria": "Sandwiches", "precio": 35.00, "icono": "🥪"},
+    {"nombre": "Sandwich Combinado", "categoria": "Sandwiches", "precio": 40.00, "icono": "🥪"},
+    
     # COMIDA CORRIDA
     {"nombre": "Comida Corrida Paquete (local)", "categoria": "Comida Corrida", "precio": 105.00, "icono": "🍽️"},
     {"nombre": "Comida Corrida Paquete (para llevar)", "categoria": "Comida Corrida", "precio": 115.00, "icono": "🍽️"},
@@ -157,6 +158,28 @@ productos = [
 ]
 
 
+PRODUCTO_LIBRE = {
+    "nombre": "Producto Libre",
+    "categoria": "Otros",
+    "precio": 0.00,
+    "icono": "✏️",
+}
+
+
+def _asegurar_producto_libre(db):
+    """Alta del producto editable. Va aparte del seed normal porque este
+    retorna temprano cuando ya hay productos, y las BD existentes tambien
+    necesitan la fila."""
+    existente = db.query(Producto).filter(Producto.nombre == PRODUCTO_LIBRE["nombre"]).first()
+    if existente:
+        if not existente.editable:
+            existente.editable = 1
+            db.commit()
+        return
+    db.add(Producto(**PRODUCTO_LIBRE, activo=1, editable=1))
+    db.commit()
+
+
 def run_seed(force=False):
     """Puebla mesas + productos. Idempotente: solo seedea si esta vacio
     (a menos que force=True). Asi un redeploy NO borra datos existentes."""
@@ -164,6 +187,7 @@ def run_seed(force=False):
     db = SessionLocal()
     try:
         if not force and db.query(Producto).first() is not None:
+            _asegurar_producto_libre(db)
             return False  # ya poblado, no tocar
 
         db.query(Producto).delete()
@@ -178,6 +202,7 @@ def run_seed(force=False):
             db.add(Producto(**p, activo=1))
 
         db.commit()
+        _asegurar_producto_libre(db)
         return True
     finally:
         db.close()

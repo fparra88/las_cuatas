@@ -32,6 +32,9 @@ class Producto(Base):
     precio = Column(Float)
     icono = Column(String, nullable=True)
     activo = Column(Integer, default=1)
+    # 1 = al agregarlo se pide nombre y precio para ESA linea (producto libre).
+    # El catalogo no cambia: la personalizacion vive en el pedido/item.
+    editable = Column(Integer, default=0)
 
 class Comensal(Base):
     __tablename__ = "comensales"
@@ -49,6 +52,8 @@ class Pedido(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"))
     cantidad = Column(Integer)
     precio_unitario = Column(Float)
+    # Si viene, sustituye al nombre del catalogo solo en esta linea.
+    nombre_personalizado = Column(String, nullable=True)
     estado = Column(Enum(EstadoPedido), default=EstadoPedido.PENDIENTE)
     creado_en = Column(DateTime, default=datetime.utcnow)
 

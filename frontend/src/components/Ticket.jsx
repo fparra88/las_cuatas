@@ -2,6 +2,7 @@ import React from 'react'
 import logo from '../imagenes/logo.png'
 import { TICKET_CONFIG } from '../ticketConfig'
 import { printTicket } from '../printTicket'
+import TicketQR from './TicketQR'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 
@@ -61,6 +62,11 @@ export default function Ticket({ subtitulo, items = [], total = 0, metodo, onDon
         {TICKET_CONFIG.pie.map((l, i) => (
           <div key={i} className="ticket-center ticket-sm">{l}</div>
         ))}
+        {TICKET_CONFIG.qrUrl && (
+          <div className="ticket-center" style={{ marginTop: '2mm' }}>
+            <TicketQR url={TICKET_CONFIG.qrUrl} />
+          </div>
+        )}
       </div>
 
       {/* Botones — no se imprimen */}

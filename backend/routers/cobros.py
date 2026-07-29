@@ -25,7 +25,7 @@ def generar_ticket(cobro: CobroCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_cobro)
     detalles = [{
-        "producto": db.query(Producto).filter(Producto.id == p.producto_id).first().nombre,
+        "producto": p.nombre_personalizado or db.query(Producto).filter(Producto.id == p.producto_id).first().nombre,
         "cantidad": p.cantidad,
         "precio_unitario": p.precio_unitario,
         "subtotal": p.cantidad * p.precio_unitario
@@ -42,7 +42,7 @@ def cobrar_comensal(comensal_id: int, metodo_pago: str, db: Session = Depends(ge
     if not pedidos_con_prod:
         raise HTTPException(status_code=400, detail="Sin pedidos")
     total = sum(p[0].cantidad * p[0].precio_unitario for p in pedidos_con_prod)
-    detalles = [{"producto": nom, "cantidad": p.cantidad, "precio_unitario": p.precio_unitario, "subtotal": round(p.cantidad * p.precio_unitario, 2)} for p, nom in pedidos_con_prod]
+    detalles = [{"producto": p.nombre_personalizado or nom, "cantidad": p.cantidad, "precio_unitario": p.precio_unitario, "subtotal": round(p.cantidad * p.precio_unitario, 2)} for p, nom in pedidos_con_prod]
     cobro = Cobro(mesa_id=comensal.mesa_id, comensal_id=comensal_id, total=total, metodo_pago=metodo_pago)
     db.add(cobro)
     comensal.activo = 0

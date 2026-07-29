@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {API_URL} from '../config'
+import ProductoLibreModal from './ProductoLibreModal'
 
 // Orden e icono por categoria. Las no listadas se muestran al final.
 const CAT_META = {
@@ -25,6 +26,7 @@ const CAT_META = {
   'Quesadillas': '🫓',
   'Hamburguesas': '🍔',
   'Bebidas': '🥤',
+  'Otros': '✏️',
 }
 const CAT_ORDER = Object.keys(CAT_META)
 
@@ -32,6 +34,7 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
   const [prods, setProds] = useState([])
   const [cat, setCat] = useState('')
   const [cats, setCats] = useState([])
+  const [libre, setLibre] = useState(null)   // producto editable pendiente de capturar
 
   // Ordena segun CAT_ORDER; desconocidas alfabeticas al final.
   const sortedCats = useMemo(() => {
@@ -68,12 +71,18 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
     load()
   }, [cat])
 
-  const add = async (id) => {
-    const body = comensalId
+  const add = async (id, extra = {}) => {
+    const base = comensalId
       ? {comensal_id: comensalId, producto_id: id, cantidad: 1}
       : {mesa_id: mesaId, producto_id: id, cantidad: 1}
-    await fetch(`${API_URL}/api/pedidos`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+    await fetch(`${API_URL}/api/pedidos`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...base, ...extra})})
     onAdd()
+  }
+
+  // Producto editable: primero se captura nombre y precio de esa linea.
+  const seleccionar = (p) => {
+    if (p.editable) setLibre(p)
+    else add(p.id)
   }
 
   return (
@@ -100,14 +109,26 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {prods.map(p => (
-          <button key={p.id} onClick={() => add(p.id)} className="bg-white rounded-2xl p-6 hover:shadow-lg">
+          <button key={p.id} onClick={() => seleccionar(p)} className="bg-white rounded-2xl p-6 hover:shadow-lg">
             <div className="text-6xl mb-4">{p.icono || '🍽️'}</div>
             <h3 className="font-bold mb-2">{p.nombre}</h3>
-            <p className="text-2xl font-bold text-blue-600 mb-4">${p.precio}</p>
+            <p className="text-2xl font-bold text-blue-600 mb-4">{p.editable ? 'Precio libre' : `$${p.precio}`}</p>
             <div className="bg-blue-500 text-white py-2 rounded font-bold">Agregar</div>
           </button>
         ))}
       </div>
+
+      {libre && (
+        <ProductoLibreModal
+          producto={libre}
+          onCancel={() => setLibre(null)}
+          onConfirm={async (datos) => {
+            const p = libre
+            setLibre(null)
+            await add(p.id, datos)
+          }}
+        />
+      )}
     </div>
   )
 }

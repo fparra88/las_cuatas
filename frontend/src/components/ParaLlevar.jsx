@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 import Ticket from './Ticket'
+import ProductoLibreModal from './ProductoLibreModal'
 
 export default function ParaLlevar() {
   const [tab, setTab] = useState('pedido')
@@ -13,6 +14,7 @@ export default function ParaLlevar() {
   const [ticket, setTicket] = useState(null)
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [historial, setHistorial] = useState([])
+  const [libre, setLibre] = useState(null)   // producto editable pendiente de capturar
 
   useEffect(() => {
     const load = async () => {
@@ -48,8 +50,30 @@ export default function ParaLlevar() {
       ...prev,
       [p.id]: prev[p.id]
         ? { ...prev[p.id], cantidad: prev[p.id].cantidad + 1 }
-        : { nombre: p.nombre, precio: p.precio, icono: p.icono || '🍽️', cantidad: 1 }
+        : { producto_id: p.id, nombre: p.nombre, precio: p.precio, icono: p.icono || '🍽️', cantidad: 1 }
     }))
+  }
+
+  // Cada producto libre es una linea propia: si se agruparan bajo el id del
+  // catalogo, dos items con nombre/precio distintos se fusionarian.
+  const addLibreToCart = (p, {nombre_personalizado, precio_unitario}) => {
+    const clave = `libre-${p.id}-${Date.now()}`
+    setCarrito(prev => ({
+      ...prev,
+      [clave]: {
+        producto_id: p.id,
+        nombre: nombre_personalizado,
+        precio: precio_unitario,
+        icono: p.icono || '✏️',
+        cantidad: 1,
+        libre: true,
+      }
+    }))
+  }
+
+  const seleccionar = (p) => {
+    if (p.editable) setLibre(p)
+    else addToCart(p)
   }
 
   const changeQty = (id, delta) => {
@@ -69,7 +93,11 @@ export default function ParaLlevar() {
   const countCarrito = Object.values(carrito).reduce((a, i) => a + i.cantidad, 0)
 
   const confirmar = async () => {
-    const items = Object.entries(carrito).map(([id, i]) => ({ producto_id: parseInt(id), cantidad: i.cantidad }))
+    const items = Object.values(carrito).map(i => (
+      i.libre
+        ? { producto_id: i.producto_id, cantidad: i.cantidad, nombre_personalizado: i.nombre, precio_unitario: i.precio }
+        : { producto_id: i.producto_id, cantidad: i.cantidad }
+    ))
     const r = await fetch(`${API_URL}/api/para-llevar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -110,9 +138,9 @@ export default function ParaLlevar() {
               <p className="text-sm text-gray-500">${i.precio} c/u</p>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => changeQty(parseInt(id), -1)} className="w-8 h-8 bg-red-500 text-white rounded-full font-bold">-</button>
+              <button onClick={() => changeQty(id, -1)} className="w-8 h-8 bg-red-500 text-white rounded-full font-bold">-</button>
               <span className="font-bold text-lg w-6 text-center">{i.cantidad}</span>
-              <button onClick={() => changeQty(parseInt(id), 1)} className="w-8 h-8 bg-green-500 text-white rounded-full font-bold">+</button>
+              <button onClick={() => changeQty(id, 1)} className="w-8 h-8 bg-green-500 text-white rounded-full font-bold">+</button>
               <p className="font-bold w-20 text-right">${(i.precio * i.cantidad).toFixed(2)}</p>
             </div>
           </div>
@@ -152,7 +180,7 @@ export default function ParaLlevar() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-32">
             {prods.map(p => (
-              <button key={p.id} onClick={() => addToCart(p)} className="bg-white rounded-2xl p-6 hover:shadow-lg relative">
+              <button key={p.id} onClick={() => seleccionar(p)} className="bg-white rounded-2xl p-6 hover:shadow-lg relative">
                 {carrito[p.id] && (
                   <span className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-7 h-7 text-sm font-bold flex items-center justify-center">
                     {carrito[p.id].cantidad}
@@ -160,7 +188,7 @@ export default function ParaLlevar() {
                 )}
                 <div className="text-6xl mb-4">{p.icono || '🍽️'}</div>
                 <h3 className="font-bold mb-2">{p.nombre}</h3>
-                <p className="text-2xl font-bold text-blue-600 mb-4">${p.precio}</p>
+                <p className="text-2xl font-bold text-blue-600 mb-4">{p.editable ? 'Precio libre' : `$${p.precio}`}</p>
                 <div className="bg-blue-500 text-white py-2 rounded font-bold">Agregar</div>
               </button>
             ))}
@@ -171,6 +199,13 @@ export default function ParaLlevar() {
                 🛒 Carrito ({countCarrito}) — ${totalCarrito.toFixed(2)}
               </button>
             </div>
+          )}
+          {libre && (
+            <ProductoLibreModal
+              producto={libre}
+              onCancel={() => setLibre(null)}
+              onConfirm={(datos) => { addLibreToCart(libre, datos); setLibre(null) }}
+            />
           )}
         </>
       )}
