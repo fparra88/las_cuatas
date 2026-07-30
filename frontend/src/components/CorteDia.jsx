@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
-import logo from '../imagenes/logo.png'
+import logo from '../imagenes/ticket.png'
 import { TICKET_CONFIG } from '../ticketConfig'
 import { printTicket } from '../printTicket'
 
