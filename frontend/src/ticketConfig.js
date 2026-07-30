@@ -10,6 +10,7 @@ export const TICKET_CONFIG = {
   // Deja el arreglo vacío [] si no quieres ninguna.
   encabezado: [
      'Calle Nicolas Regules 63, Col. Mexicaltzingo, Guadalajara, Jal.',
+     'Local 21, mercado Mexicaltzingo',
      'RFC: PAVF881210AY1',
      'Tel: 33 3228 3760',
   ],

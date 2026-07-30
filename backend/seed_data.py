@@ -53,21 +53,21 @@ productos = [
 
     # PARRILLADA
     {"nombre": "Parrillada con Agua (local)", "categoria": "Parrillada", "precio": 130.00, "icono": "🥩"},
-    {"nombre": "Parrillada con Agua (para llevar)", "categoria": "Parrillada", "precio": 140.00, "icono": "🥩"},
+    {"nombre": "Parrillada con Agua (para llevar)", "categoria": "Parrillada", "precio": 135.00, "icono": "🥩"},
     {"nombre": "Parrillada sin Agua (local)", "categoria": "Parrillada", "precio": 120.00, "icono": "🥩"},
-    {"nombre": "Parrillada sin Agua (para llevar)", "categoria": "Parrillada", "precio": 130.00, "icono": "🥩"},
+    {"nombre": "Parrillada sin Agua (para llevar)", "categoria": "Parrillada", "precio": 125.00, "icono": "🥩"},
 
     # ALAMBRE
     {"nombre": "Alambre con Agua (local)", "categoria": "Alambre", "precio": 120.00, "icono": "🍢"},
-    {"nombre": "Alambre con Agua (para llevar)", "categoria": "Alambre", "precio": 130.00, "icono": "🍢"},
+    {"nombre": "Alambre con Agua (para llevar)", "categoria": "Alambre", "precio": 125.00, "icono": "🍢"},
     {"nombre": "Alambre sin Agua (local)", "categoria": "Alambre", "precio": 110.00, "icono": "🍢"},
-    {"nombre": "Alambre sin Agua (para llevar)", "categoria": "Alambre", "precio": 120.00, "icono": "🍢"},
+    {"nombre": "Alambre sin Agua (para llevar)", "categoria": "Alambre", "precio": 115.00, "icono": "🍢"},
 
     # POLLO VEGETARIANO
     {"nombre": "Pollo Vegetariano con Agua (local)", "categoria": "Pollo Vegetariano", "precio": 120.00, "icono": "🥗"},
-    {"nombre": "Pollo Vegetariano con Agua (para llevar)", "categoria": "Pollo Vegetariano", "precio": 130.00, "icono": "🥗"},
+    {"nombre": "Pollo Vegetariano con Agua (para llevar)", "categoria": "Pollo Vegetariano", "precio": 125.00, "icono": "🥗"},
     {"nombre": "Pollo Vegetariano sin Agua (local)", "categoria": "Pollo Vegetariano", "precio": 110.00, "icono": "🥗"},
-    {"nombre": "Pollo Vegetariano sin Agua (para llevar)", "categoria": "Pollo Vegetariano", "precio": 120.00, "icono": "🥗"},
+    {"nombre": "Pollo Vegetariano sin Agua (para llevar)", "categoria": "Pollo Vegetariano", "precio": 115.00, "icono": "🥗"},
 
     # SANDWICHES        
     {"nombre": "Sandwich de Jamón", "categoria": "Sandwiches", "precio": 35.00, "icono": "🥪"},
@@ -76,81 +76,82 @@ productos = [
     
     # COMIDA CORRIDA
     {"nombre": "Comida Corrida Paquete (local)", "categoria": "Comida Corrida", "precio": 105.00, "icono": "🍽️"},
-    {"nombre": "Comida Corrida Paquete (para llevar)", "categoria": "Comida Corrida", "precio": 115.00, "icono": "🍽️"},
+    {"nombre": "Comida Corrida Paquete (para llevar)", "categoria": "Comida Corrida", "precio": 110.00, "icono": "🍽️"},
     {"nombre": "Comida Corrida Solo Platillo (local)", "categoria": "Comida Corrida", "precio": 100.00, "icono": "🍽️"},
-    {"nombre": "Comida Corrida Solo Platillo (para llevar)", "categoria": "Comida Corrida", "precio": 110.00, "icono": "🍽️"},
+    {"nombre": "Comida Corrida Solo Platillo (para llevar)", "categoria": "Comida Corrida", "precio": 105.00, "icono": "🍽️"},
 
     # CARNE ASADA
     {"nombre": "Carne Asada Paquete (local)", "categoria": "Carne Asada", "precio": 125.00, "icono": "🥩"},
-    {"nombre": "Carne Asada Paquete (para llevar)", "categoria": "Carne Asada", "precio": 135.00, "icono": "🥩"},
+    {"nombre": "Carne Asada Paquete (para llevar)", "categoria": "Carne Asada", "precio": 130.00, "icono": "🥩"},
     {"nombre": "Carne Asada Solo Platillo (local)", "categoria": "Carne Asada", "precio": 120.00, "icono": "🥩"},
     {"nombre": "Carne Asada Solo Platillo (para llevar)", "categoria": "Carne Asada", "precio": 125.00, "icono": "🥩"},
 
     # POLLO A LA PLANCHA
     {"nombre": "Pollo a la Plancha Paquete (local)", "categoria": "Pollo", "precio": 110.00, "icono": "🍗"},
-    {"nombre": "Pollo a la Plancha Paquete (para llevar)", "categoria": "Pollo", "precio": 120.00, "icono": "🍗"},
+    {"nombre": "Pollo a la Plancha Paquete (para llevar)", "categoria": "Pollo", "precio": 115.00, "icono": "🍗"},
     {"nombre": "Pollo a la Plancha Solo Platillo (local)", "categoria": "Pollo", "precio": 105.00, "icono": "🍗"},
     {"nombre": "Pollo a la Plancha Solo Platillo (para llevar)", "categoria": "Pollo", "precio": 110.00, "icono": "🍗"},
 
     # MILANESA DE POLLO Y RES
     {"nombre": "Milanesa de Pollo y Res Paquete (local)", "categoria": "Milanesa", "precio": 120.00, "icono": "🍖"},
-    {"nombre": "Milanesa de Pollo y Res Paquete (para llevar)", "categoria": "Milanesa", "precio": 130.00, "icono": "🍖"},
+    {"nombre": "Milanesa de Pollo y Res Paquete (para llevar)", "categoria": "Milanesa", "precio": 125.00, "icono": "🍖"},
     {"nombre": "Milanesa de Pollo y Res Solo Platillo (local)", "categoria": "Milanesa", "precio": 115.00, "icono": "🍖"},
     {"nombre": "Milanesa de Pollo y Res Solo Platillo (para llevar)", "categoria": "Milanesa", "precio": 120.00, "icono": "🍖"},
 
     # ENSALADA DE POLLO
     {"nombre": "Ensalada de Pollo con Agua (local)", "categoria": "Ensaladas", "precio": 105.00, "icono": "🥗"},
-    {"nombre": "Ensalada de Pollo con Agua (para llevar)", "categoria": "Ensaladas", "precio": 115.00, "icono": "🥗"},
+    {"nombre": "Ensalada de Pollo con Agua (para llevar)", "categoria": "Ensaladas", "precio": 110.00, "icono": "🥗"},
     {"nombre": "Ensalada de Pollo sin Agua (local)", "categoria": "Ensaladas", "precio": 100.00, "icono": "🥗"},
-    {"nombre": "Ensalada de Pollo sin Agua (para llevar)", "categoria": "Ensaladas", "precio": 110.00, "icono": "🥗"},
+    {"nombre": "Ensalada de Pollo sin Agua (para llevar)", "categoria": "Ensaladas", "precio": 105.00, "icono": "🥗"},
 
     # TORTA LAS CUATAS
     {"nombre": "Torta las Cuatas (para llevar)", "categoria": "Tortas", "precio": 80.00, "icono": "🥙"},
 
     # HUEVOS AL GUSTO
     {"nombre": "Huevos al Gusto Paquete (local)", "categoria": "Desayunos", "precio": 80.00, "icono": "🍳"},
-    {"nombre": "Huevos al Gusto Paquete (para llevar)", "categoria": "Desayunos", "precio": 90.00, "icono": "🍳"},
+    {"nombre": "Huevos al Gusto Paquete (para llevar)", "categoria": "Desayunos", "precio": 85.00, "icono": "🍳"},
     {"nombre": "Huevos al Gusto Solo Platillo (local)", "categoria": "Desayunos", "precio": 75.00, "icono": "🍳"},
     {"nombre": "Huevos al Gusto Solo Platillo (para llevar)", "categoria": "Desayunos", "precio": 80.00, "icono": "🍳"},
 
     # OMELETTE
     {"nombre": "Omelette Paquete (local)", "categoria": "Desayunos", "precio": 90.00, "icono": "🍳"},
-    {"nombre": "Omelette Paquete (para llevar)", "categoria": "Desayunos", "precio": 100.00, "icono": "🍳"},
+    {"nombre": "Omelette Paquete (para llevar)", "categoria": "Desayunos", "precio": 95.00, "icono": "🍳"},
     {"nombre": "Omelette Solo Platillo (local)", "categoria": "Desayunos", "precio": 85.00, "icono": "🍳"},
-    {"nombre": "Omelette Solo Platillo (para llevar)", "categoria": "Desayunos", "precio": 95.00, "icono": "🍳"},
+    {"nombre": "Omelette Solo Platillo (para llevar)", "categoria": "Desayunos", "precio": 90.00, "icono": "🍳"},
 
     # ORDEN MOLLETES
     {"nombre": "Orden Molletes Paquete (local)", "categoria": "Desayunos", "precio": 70.00, "icono": "🫓"},
-    {"nombre": "Orden Molletes Paquete (para llevar)", "categoria": "Desayunos", "precio": 80.00, "icono": "🫓"},
+    {"nombre": "Orden Molletes Paquete (para llevar)", "categoria": "Desayunos", "precio": 75.00, "icono": "🫓"},
     {"nombre": "Orden Molletes sin Bebida (local)", "categoria": "Desayunos", "precio": 65.00, "icono": "🫓"},
     {"nombre": "Orden Molletes sin Bebida (para llevar)", "categoria": "Desayunos", "precio": 70.00, "icono": "🫓"},
 
     # RANCHEROS / DIVORCIADOS
     {"nombre": "Rancheros/Divorciados Paquete (local)", "categoria": "Desayunos", "precio": 90.00, "icono": "🍳"},
-    {"nombre": "Rancheros/Divorciados Paquete (para llevar)", "categoria": "Desayunos", "precio": 100.00, "icono": "🍳"},
+    {"nombre": "Rancheros/Divorciados Paquete (para llevar)", "categoria": "Desayunos", "precio": 95.00, "icono": "🍳"},
     {"nombre": "Rancheros/Divorciados Solo Platillo (local)", "categoria": "Desayunos", "precio": 85.00, "icono": "🍳"},
-    {"nombre": "Rancheros/Divorciados Solo Platillo (para llevar)", "categoria": "Desayunos", "precio": 95.00, "icono": "🍳"},
+    {"nombre": "Rancheros/Divorciados Solo Platillo (para llevar)", "categoria": "Desayunos", "precio": 90.00, "icono": "🍳"},
 
     # HOT CAKES (PAQUETE)
     {"nombre": "Hot Cakes Paquete (local)", "categoria": "Desayunos", "precio": 85.00, "icono": "🥞"},
-    {"nombre": "Hot Cakes Paquete (para llevar)", "categoria": "Desayunos", "precio": 95.00, "icono": "🥞"},
+    {"nombre": "Hot Cakes Paquete (para llevar)", "categoria": "Desayunos", "precio": 90.00, "icono": "🥞"},
     {"nombre": "Hot Cakes sin Bebida (local)", "categoria": "Desayunos", "precio": 80.00, "icono": "🥞"},
-    {"nombre": "Hot Cakes sin Bebida (para llevar)", "categoria": "Desayunos", "precio": 90.00, "icono": "🥞"},
+    {"nombre": "Hot Cakes sin Bebida (para llevar)", "categoria": "Desayunos", "precio": 85.00, "icono": "🥞"},
 
     # CHAMORRO ADOBADO
     {"nombre": "Chamorro Adobado Paquete (local)", "categoria": "Chamorro", "precio": 125.00, "icono": "🍖"},
-    {"nombre": "Chamorro Adobado Paquete (para llevar)", "categoria": "Chamorro", "precio": 135.00, "icono": "🍖"},
+    {"nombre": "Chamorro Adobado Paquete (para llevar)", "categoria": "Chamorro", "precio": 130.00, "icono": "🍖"},
     {"nombre": "Chamorro Adobado Solo Platillo (local)", "categoria": "Chamorro", "precio": 120.00, "icono": "🍖"},
-    {"nombre": "Chamorro Adobado Solo Platillo (para llevar)", "categoria": "Chamorro", "precio": 130.00, "icono": "🍖"},
+    {"nombre": "Chamorro Adobado Solo Platillo (para llevar)", "categoria": "Chamorro", "precio": 125.00, "icono": "🍖"},
 
     # BEBIDAS CALIENTES
     {"nombre": "Café/Avena/Té Lto", "categoria": "Bebidas", "precio": 50.00, "icono": "☕"},
     {"nombre": "Café/Avena/Té 1/2", "categoria": "Bebidas", "precio": 25.00, "icono": "☕"},
-    {"nombre": "Café/Avena/Té 1/4", "categoria": "Bebidas", "precio": 18.00, "icono": "☕"},
+    {"nombre": "Café/Avena/Té 1/4", "categoria": "Bebidas", "precio": 18.00, "icono": "☕"},    
 
     # AGUAS
     {"nombre": "Agua Lto", "categoria": "Bebidas", "precio": 25.00, "icono": "🥤"},
     {"nombre": "Agua 1/2", "categoria": "Bebidas", "precio": 18.00, "icono": "🥤"},
+    {"nombre": "Refresco", "categoria": "Bebidas", "precio": 25.00, "icono": "🥤"},
 
     # HAMBURGUESA
     {"nombre": "Hamburguesa (local)", "categoria": "Hamburguesas", "precio": 80.00, "icono": "🍔"},

@@ -1,5 +1,5 @@
 import React from 'react'
-import logo from '../imagenes/logo.png'
+import logo from '../imagenes/ticket.png'
 import { TICKET_CONFIG } from '../ticketConfig'
 import { printTicket } from '../printTicket'
 import TicketQR from './TicketQR'
