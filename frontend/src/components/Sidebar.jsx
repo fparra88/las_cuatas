@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import logo from '../imagenes/logo.png'
+import logo from '../imagenes/ticket.png'
 import CorteDia from './CorteDia'
 
 const NAV = [
