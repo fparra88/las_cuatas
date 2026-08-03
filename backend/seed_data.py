@@ -167,53 +167,65 @@ PRODUCTO_LIBRE = {
 }
 
 
-def _asegurar_producto_libre(db):
-    """Alta del producto editable. Va aparte del seed normal porque este
-    retorna temprano cuando ya hay productos, y las BD existentes tambien
-    necesitan la fila."""
-    existente = db.query(Producto).filter(Producto.nombre == PRODUCTO_LIBRE["nombre"]).first()
-    if existente:
-        if not existente.editable:
-            existente.editable = 1
-            db.commit()
-        return
-    db.add(Producto(**PRODUCTO_LIBRE, activo=1, editable=1))
+def _sync_productos(db):
+    """Sincroniza el catalogo (productos + PRODUCTO_LIBRE) contra la BD en
+    CADA arranque: agrega lo nuevo, actualiza precio/categoria/icono de lo que
+    cambio en el codigo, y reactiva lo que estaba desactivado.
+
+    Lo que se quita de la lista se DESACTIVA (activo=0), nunca se borra: un
+    pedido abierto puede tener una FK a ese producto, y en Postgres un DELETE
+    ahi revienta la foreign key (SQLite no la valida, por eso este bug no se
+    veia en local).
+    """
+    catalogo = productos + [PRODUCTO_LIBRE]
+    existentes = {p.nombre: p for p in db.query(Producto).all()}
+    vistos = set()
+
+    for datos in catalogo:
+        vistos.add(datos["nombre"])
+        editable = 1 if datos is PRODUCTO_LIBRE else 0
+        p = existentes.get(datos["nombre"])
+        if p:
+            p.categoria = datos["categoria"]
+            p.precio = datos["precio"]
+            p.icono = datos.get("icono")
+            p.editable = editable
+            p.activo = 1
+        else:
+            db.add(Producto(**datos, activo=1, editable=editable))
+
+    for nombre, p in existentes.items():
+        if nombre not in vistos and p.activo:
+            p.activo = 0
+
     db.commit()
 
 
 def run_seed(force=False):
-    """Puebla mesas + productos. Idempotente: solo seedea si esta vacio
-    (a menos que force=True). Asi un redeploy NO borra datos existentes."""
+    """Siembra mesas (solo si no hay ninguna) y sincroniza productos (siempre,
+    ver _sync_productos). force=True fuerza re-crear las mesas tambien."""
     init_db()
     db = SessionLocal()
     try:
-        if not force and db.query(Producto).first() is not None:
-            _asegurar_producto_libre(db)
-            return False  # ya poblado, no tocar
+        crear_mesas = force or db.query(Mesa).first() is None
+        if crear_mesas:
+            db.query(Mesa).delete()
+            # 6 mesas fisicas + 5 lugares de barra: numero real del negocio,
+            # no un limite de pantalla. Para agregar una mesa despues usa
+            # POST /api/mesas, no cambies este rango.
+            for i in range(1, 7):
+                db.add(Mesa(numero=i, capacidad=4 if i <= 4 else 6, tipo="mesa", estado="disponible"))
+            for i in range(1, 6):
+                db.add(Mesa(numero=100 + i, capacidad=6, tipo="barra", estado="disponible"))
+            db.commit()
 
-        db.query(Producto).delete()
-        db.query(Mesa).delete()
-        db.commit()
-
-        # 6 mesas fisicas + 5 lugares de barra: numero real del negocio, no un
-        # limite de pantalla. Para agregar una mesa despues usa POST /api/mesas,
-        # no cambies este rango (correr el seed de nuevo no re-siembra si ya
-        # hay datos).
-        for i in range(1, 7):
-            db.add(Mesa(numero=i, capacidad=4 if i <= 4 else 6, tipo="mesa", estado="disponible"))
-        for i in range(1, 6):
-            db.add(Mesa(numero=100 + i, capacidad=6, tipo="barra", estado="disponible"))
-        for p in productos:
-            db.add(Producto(**p, activo=1))
-
-        db.commit()
-        _asegurar_producto_libre(db)
-        return True
+        _sync_productos(db)
+        return crear_mesas
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    # Ejecucion manual: fuerza re-seed completo.
+    # Ejecucion manual: fuerza re-crear mesas ademas de sincronizar productos.
     ok = run_seed(force=True)
-    print("BD poblada OK" if ok else "Sin cambios")
+    print("Mesas recreadas + productos sincronizados" if ok else "Productos sincronizados (mesas ya existian)")

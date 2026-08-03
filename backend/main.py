@@ -17,7 +17,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 @app.on_event("startup")
 def _seed_if_empty():
     # Seed a runtime (el build no alcanza el Postgres de EasyPanel).
-    # Idempotente: no borra datos si ya hay productos.
+    # Mesas: solo si no hay ninguna. Productos: se sincronizan contra la
+    # lista de seed_data.py en cada arranque (ver _sync_productos).
     from seed_data import run_seed
     run_seed()
 
