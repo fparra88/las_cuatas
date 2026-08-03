@@ -195,7 +195,11 @@ def run_seed(force=False):
         db.query(Mesa).delete()
         db.commit()
 
-        for i in range(1, 101):
+        # 6 mesas fisicas + 5 lugares de barra: numero real del negocio, no un
+        # limite de pantalla. Para agregar una mesa despues usa POST /api/mesas,
+        # no cambies este rango (correr el seed de nuevo no re-siembra si ya
+        # hay datos).
+        for i in range(1, 7):
             db.add(Mesa(numero=i, capacidad=4 if i <= 4 else 6, tipo="mesa", estado="disponible"))
         for i in range(1, 6):
             db.add(Mesa(numero=100 + i, capacidad=6, tipo="barra", estado="disponible"))

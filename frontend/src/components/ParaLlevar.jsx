@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 import Ticket from './Ticket'
 import ProductoLibreModal from './ProductoLibreModal'
+import PasosPago, { extrasDePago } from './PasosPago'
+import { hoyLocal, horaLocal } from '../fecha'
 
 export default function ParaLlevar() {
   const [tab, setTab] = useState('pedido')
@@ -10,11 +12,12 @@ export default function ParaLlevar() {
   const [cat, setCat] = useState('')
   const [carrito, setCarrito] = useState({})
   const [vista, setVista] = useState('productos')
-  const [metodo, setMetodo] = useState('efectivo')
   const [ticket, setTicket] = useState(null)
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [fecha, setFecha] = useState(hoyLocal())
   const [historial, setHistorial] = useState([])
   const [libre, setLibre] = useState(null)   // producto editable pendiente de capturar
+  const [errorCobro, setErrorCobro] = useState('')
+  const [cobrando, setCobrando] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -92,37 +95,90 @@ export default function ParaLlevar() {
   const totalCarrito = Object.values(carrito).reduce((a, i) => a + i.precio * i.cantidad, 0)
   const countCarrito = Object.values(carrito).reduce((a, i) => a + i.cantidad, 0)
 
-  const confirmar = async () => {
+  // La orden se crea hasta cerrar el pago; la cuenta previa solo se imprime.
+  const confirmar = async (pago) => {
+    setCobrando(true)
+    setErrorCobro('')
     const items = Object.values(carrito).map(i => (
       i.libre
         ? { producto_id: i.producto_id, cantidad: i.cantidad, nombre_personalizado: i.nombre, precio_unitario: i.precio }
         : { producto_id: i.producto_id, cantidad: i.cantidad }
     ))
-    const r = await fetch(`${API_URL}/api/para-llevar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, metodo_pago: metodo })
-    })
-    const data = await r.json()
-    setTicket({ ...data, carritoItems: Object.values(carrito), metodo })
-    setVista('ticket')
-    setCarrito({})
+    try {
+      const r = await fetch(`${API_URL}/api/para-llevar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, ...pago })
+      })
+      const data = await r.json()
+      if (!r.ok) {
+        const d = data.detail
+        throw new Error(Array.isArray(d) ? d[0]?.msg || 'Datos inválidos' : d || 'No se pudo cobrar')
+      }
+      setTicket({ ...data, carritoItems: Object.values(carrito) })
+      setVista('ticket')
+      setCarrito({})
+    } catch (e) {
+      setErrorCobro(e.message)
+    } finally {
+      setCobrando(false)
+    }
   }
 
   const nuevoPedido = () => {
     setTicket(null)
     setVista('productos')
-    setMetodo('efectivo')
+    setErrorCobro('')
   }
 
+  // COMPROBANTE (orden ya creada)
   if (vista === 'ticket' && ticket) return (
     <Ticket
       subtitulo={`Para Llevar #${ticket.id}`}
       items={ticket.carritoItems.map(i => ({nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio}))}
       total={ticket.total}
-      metodo={ticket.metodo}
+      metodo={ticket.metodo_pago}
+      extras={extrasDePago(ticket)}
       onDone={nuevoPedido}
       doneLabel="✅ Nuevo Pedido"
+    />
+  )
+
+  // 1. CONFIRMAR
+  if (vista === 'confirmar') return (
+    <div className="min-h-screen bg-transparent p-6 flex items-center justify-center">
+      <div className="max-w-2xl w-full bg-white rounded-3xl p-12 text-center">
+        <div className="text-7xl mb-6">🛍️</div>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">¿Generar el cobro del pedido para llevar?</h1>
+        <p className="text-gray-500 mb-10">{countCarrito} artículo(s) · Se imprimirá la cuenta. El pedido no se registra hasta cerrar el pago.</p>
+        <button onClick={() => { setErrorCobro(''); setVista('cuenta') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, generar cuenta</button>
+        <button onClick={() => setVista('carrito')} className="w-full bg-gray-600 text-white font-bold py-4 rounded-xl">← Volver al carrito</button>
+      </div>
+    </div>
+  )
+
+  // 2. CUENTA (aún no se registra la orden)
+  if (vista === 'cuenta') return (
+    <Ticket
+      subtitulo="Para Llevar"
+      aviso="** CUENTA **"
+      items={Object.values(carrito).map(i => ({nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio}))}
+      total={totalCarrito}
+      onDone={() => setVista('pago')}
+      doneLabel="💳 Registrar pago →"
+      extraBtn={{label: '← Volver al carrito', onClick: () => setVista('carrito')}}
+    />
+  )
+
+  // 3-4. MÉTODO + DATOS DEL PAGO
+  if (vista === 'pago') return (
+    <PasosPago
+      total={totalCarrito}
+      subtitulo="Para Llevar"
+      onCobrar={confirmar}
+      onCancel={() => setVista('cuenta')}
+      error={errorCobro}
+      cargando={cobrando}
     />
   )
 
@@ -149,18 +205,12 @@ export default function ParaLlevar() {
       <div className="bg-blue-600 text-white rounded-2xl p-6 mb-6">
         <p className="text-4xl font-bold text-center">TOTAL: ${totalCarrito.toFixed(2)}</p>
       </div>
-      <div className="bg-white rounded-2xl p-6 mb-6">
-        <h3 className="font-bold mb-4">Método de Pago</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => setMetodo('efectivo')} className={`p-4 rounded-xl border-4 ${metodo === 'efectivo' ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 border-gray-200'}`}>
-            <div className="text-4xl mb-1">💵</div><p className="font-bold">EFECTIVO</p>
-          </button>
-          <button onClick={() => setMetodo('tarjeta')} className={`p-4 rounded-xl border-4 ${metodo === 'tarjeta' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 border-gray-200'}`}>
-            <div className="text-4xl mb-1">💳</div><p className="font-bold">TARJETA</p>
-          </button>
-        </div>
-      </div>
-      <button onClick={confirmar} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl text-xl">✅ Confirmar Pedido</button>
+      {/* El método de pago ahora se pide después de imprimir la cuenta. */}
+      <button
+        onClick={() => countCarrito && setVista('confirmar')}
+        disabled={!countCarrito}
+        className="w-full bg-green-600 text-white font-bold py-4 rounded-xl text-xl disabled:bg-gray-300"
+      >💰 Cobrar</button>
     </div>
   )
 
@@ -238,7 +288,7 @@ export default function ParaLlevar() {
                   <div className="flex justify-between mb-4">
                     <div>
                       <p className="font-bold text-lg">Pedido #{o.id}</p>
-                      <p className="text-sm text-gray-500">{new Date(o.fecha_hora).toLocaleTimeString()}</p>
+                      <p className="text-sm text-gray-500">{horaLocal(o.fecha_hora)}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-2xl text-green-600">${o.total.toFixed(2)}</p>

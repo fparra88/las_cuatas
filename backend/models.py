@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+
+from tz import ahora_utc
 
 Base = declarative_base()
 
@@ -22,7 +23,7 @@ class Mesa(Base):
     capacidad = Column(Integer)
     tipo = Column(String, default="mesa")
     estado = Column(Enum(EstadoMesa), default=EstadoMesa.DISPONIBLE)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=ahora_utc)
 
 class Producto(Base):
     __tablename__ = "productos"
@@ -42,7 +43,7 @@ class Comensal(Base):
     mesa_id = Column(Integer, ForeignKey("mesas.id"))
     nombre = Column(String)
     activo = Column(Integer, default=1)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=ahora_utc)
 
 class Pedido(Base):
     __tablename__ = "pedidos"
@@ -55,7 +56,7 @@ class Pedido(Base):
     # Si viene, sustituye al nombre del catalogo solo en esta linea.
     nombre_personalizado = Column(String, nullable=True)
     estado = Column(Enum(EstadoPedido), default=EstadoPedido.PENDIENTE)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=ahora_utc)
 
 class Cobro(Base):
     __tablename__ = "cobros"
@@ -64,22 +65,32 @@ class Cobro(Base):
     comensal_id = Column(Integer, ForeignKey("comensales.id"), nullable=True)
     total = Column(Float)
     metodo_pago = Column(String)
+    # Tarjeta: codigo de autorizacion de la terminal (para cuadrar el corte).
+    codigo_cobro = Column(String, nullable=True)
+    # Efectivo: con cuanto pago el cliente. El cambio = monto_recibido - total.
+    monto_recibido = Column(Float, nullable=True)
     estado = Column(Enum(EstadoCobro), default=EstadoCobro.COMPLETADO)
-    fecha_hora = Column(DateTime, default=datetime.utcnow)
+    fecha_hora = Column(DateTime, default=ahora_utc)
+    # NULL = pendiente de corte. Con valor = ya quedo dentro de ese cierre.
+    cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
 
 class Gasto(Base):
     __tablename__ = "gastos"
     id = Column(Integer, primary_key=True, index=True)
     descripcion = Column(String)
     monto = Column(Float)
-    fecha_hora = Column(DateTime, default=datetime.utcnow)
+    fecha_hora = Column(DateTime, default=ahora_utc)
+    cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
 
 class OrdenLlevar(Base):
     __tablename__ = "ordenes_llevar"
     id = Column(Integer, primary_key=True, index=True)
     total = Column(Float)
     metodo_pago = Column(String)
-    fecha_hora = Column(DateTime, default=datetime.utcnow)
+    codigo_cobro = Column(String, nullable=True)
+    monto_recibido = Column(Float, nullable=True)
+    fecha_hora = Column(DateTime, default=ahora_utc)
+    cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
 
 class OrdenLlevarItem(Base):
     __tablename__ = "ordenes_llevar_items"
@@ -91,12 +102,14 @@ class OrdenLlevarItem(Base):
 
 class CierreCaja(Base):
     __tablename__ = "cierres_caja"
+    # Un solo cierre por dia: evita cortes duplicados por doble click.
+    __table_args__ = (UniqueConstraint("fecha", name="uq_cierre_fecha"),)
     id = Column(Integer, primary_key=True, index=True)
-    fecha = Column(String, index=True)          # YYYY-MM-DD del corte
+    fecha = Column(String, index=True)          # YYYY-MM-DD del corte (hora local)
     ingresos = Column(Float)
     gastos = Column(Float)
     efectivo_bruto = Column(Float)
     efectivo_neto = Column(Float)               # efectivo - gastos
     tarjeta = Column(Float)                      # informativo
     neto = Column(Float)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=ahora_utc)

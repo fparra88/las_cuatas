@@ -3,9 +3,10 @@ import { API_URL } from '../config'
 import logo from '../imagenes/ticket.png'
 import { TICKET_CONFIG } from '../ticketConfig'
 import { printTicket } from '../printTicket'
+import { hoyLocal, horaLocal } from '../fecha'
 
 export default function CorteDia({ onClose }) {
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [fecha, setFecha] = useState(hoyLocal())
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
@@ -164,6 +165,19 @@ export default function CorteDia({ onClose }) {
               <p className="text-sm mt-2 opacity-70">{data.fecha}</p>
             </div>
 
+            {/* Aviso: este dia ya se cerro. Solo se puede cortar una vez. */}
+            {data.cerrado && (
+              <div className="mt-6 p-4 bg-gray-100 border border-gray-200 rounded-xl text-center">
+                <p className="font-bold text-gray-700">🔒 Día ya cerrado (corte #{data.cerrado.id})</p>
+                <p className="text-sm text-gray-500">
+                  Neto ${data.cerrado.neto.toFixed(2)} · efectivo ${data.cerrado.efectivo_neto.toFixed(2)} · {horaLocal(data.cerrado.creado_en)}
+                </p>
+                {data.ingresos !== 0 && (
+                  <p className="text-sm text-amber-600 mt-1">Hay ${data.ingresos.toFixed(2)} registrados después del corte.</p>
+                )}
+              </div>
+            )}
+
             {/* Aviso: mesas/barras ocupadas bloquean el corte */}
             {data.ocupadas > 0 && (
               <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
@@ -181,7 +195,7 @@ export default function CorteDia({ onClose }) {
             {/* Efectuar corte */}
             <button
               onClick={() => setConfirmando(true)}
-              disabled={data.ocupadas > 0}
+              disabled={data.ocupadas > 0 || !!data.cerrado}
               className="w-full mt-6 bg-[#336666] text-white font-bold py-4 rounded-xl text-lg disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               ✅ Efectuar Corte

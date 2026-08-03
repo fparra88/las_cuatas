@@ -1,21 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from database import get_db
-from models import Comensal, Mesa, EstadoMesa
+from models import Comensal, Mesa, Pedido, EstadoMesa
 
 router = APIRouter(prefix="/api/comensales", tags=["comensales"])
 
 class ComensalCreate(BaseModel):
     barra_id: int
-    nombre: str
+    nombre: str = Field(min_length=1, max_length=80)
 
 @router.post("")
 def crear_comensal(data: ComensalCreate, db: Session = Depends(get_db)):
     barra = db.query(Mesa).filter(Mesa.id == data.barra_id).first()
     if not barra:
-        raise HTTPException(status_code=404)
-    comensal = Comensal(mesa_id=data.barra_id, nombre=data.nombre.strip())
+        raise HTTPException(status_code=404, detail="Barra no encontrada")
+    nombre = data.nombre.strip()
+    if not nombre:
+        raise HTTPException(status_code=422, detail="El nombre no puede estar vacio")
+    comensal = Comensal(mesa_id=data.barra_id, nombre=nombre)
     db.add(comensal)
     if barra.estado == EstadoMesa.DISPONIBLE:
         barra.estado = EstadoMesa.OCUPADA
@@ -32,8 +35,11 @@ def listar_comensales(barra_id: int, db: Session = Depends(get_db)):
 def eliminar_comensal(comensal_id: int, db: Session = Depends(get_db)):
     c = db.query(Comensal).filter(Comensal.id == comensal_id).first()
     if not c:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=404, detail="Comensal no encontrado")
     barra_id = c.mesa_id
+    # Borrar tambien sus pedidos (la UI ya avisa "y sus pedidos"). Antes quedaban
+    # huerfanos: nunca se cobraban ni aparecian en ningun lado.
+    borrados = db.query(Pedido).filter(Pedido.comensal_id == comensal_id).delete(synchronize_session=False)
     db.delete(c)
     db.flush()
     otros = db.query(Comensal).filter(Comensal.mesa_id == barra_id, Comensal.activo == 1).count()
@@ -42,4 +48,4 @@ def eliminar_comensal(comensal_id: int, db: Session = Depends(get_db)):
         if barra:
             barra.estado = EstadoMesa.DISPONIBLE
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "pedidos_borrados": borrados}

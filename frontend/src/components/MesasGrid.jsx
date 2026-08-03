@@ -7,7 +7,9 @@ export default function MesasGrid({onSelect}) {
   const [mesas, setMesas] = useState([])
   useEffect(() => {
     const load = async () => {
-      const r = await fetch(`${API_URL}/api/mesas`)
+      // tipo=mesa: sin filtro, esta vista mezclaba las barras (numero 101+)
+      // entre las mesas.
+      const r = await fetch(`${API_URL}/api/mesas?tipo=mesa`)
       setMesas(await r.json())
     }
     load()
@@ -15,7 +17,6 @@ export default function MesasGrid({onSelect}) {
     return () => clearInterval(i)
   }, [])
 
-  const mesasVisibles = mesas.slice(0, 6)
   const color = (e) => ({disponible: 'bg-white/40', ocupada: 'bg-red-500/20'}[e] || 'bg-gray-400/40')
   const icon = (e) => ({disponible: iconoLibre, ocupada: iconoOcupado}[e] || iconoLibre)
 
@@ -24,7 +25,7 @@ export default function MesasGrid({onSelect}) {
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-orange-700 mb-8">Mesas</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {mesasVisibles.map(m => (
+          {mesas.map(m => (
             <button key={m.id} onClick={() => onSelect(m)} className={`${color(m.estado)} rounded-2xl border-4 p-8 hover:scale-105`}>
               <div className="mb-4"><img src={icon(m.estado)} alt={m.estado} className="h-16 w-16 mx-auto object-contain" /></div>
               <div className="text-2xl font-bold mb-2">Mesa {m.numero}</div>
@@ -34,8 +35,8 @@ export default function MesasGrid({onSelect}) {
         </div>
         <div className="mt-12 bg-white rounded-xl p-6">
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div><p className="text-3xl font-bold text-green-600">{mesasVisibles.filter(m => m.estado === 'disponible').length}</p><p>Disponibles</p></div>
-            <div><p className="text-3xl font-bold text-red-600">{mesasVisibles.filter(m => m.estado === 'ocupada').length}</p><p>Ocupadas</p></div>
+            <div><p className="text-3xl font-bold text-green-600">{mesas.filter(m => m.estado === 'disponible').length}</p><p>Disponibles</p></div>
+            <div><p className="text-3xl font-bold text-red-600">{mesas.filter(m => m.estado === 'ocupada').length}</p><p>Ocupadas</p></div>
           </div>
         </div>
       </div>

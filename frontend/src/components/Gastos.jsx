@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
+import { hoyLocal, horaLocal } from '../fecha'
 
 export default function Gastos() {
   const [gastos, setGastos] = useState([])
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [fecha, setFecha] = useState(hoyLocal())
   const [descripcion, setDescripcion] = useState('')
   const [monto, setMonto] = useState('')
 
@@ -92,7 +93,7 @@ export default function Gastos() {
                 <div key={g.id} className="bg-white rounded-xl p-4 flex justify-between items-center">
                   <div>
                     <p className="font-bold">{g.descripcion}</p>
-                    <p className="text-sm text-gray-500">{new Date(g.fecha_hora).toLocaleTimeString()}</p>
+                    <p className="text-sm text-gray-500">{horaLocal(g.fecha_hora)}</p>
                   </div>
                   <div className="flex items-center gap-4">
                     <p className="font-bold text-red-600 text-xl">${g.monto.toFixed(2)}</p>

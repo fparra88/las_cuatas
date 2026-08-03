@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 import AgregarPedido from './AgregarPedido'
 import Ticket from './Ticket'
+import PasosPago, {extrasDePago} from './PasosPago'
 
 export default function Barras() {
   const [barras, setBarras] = useState([])
@@ -11,8 +12,9 @@ export default function Barras() {
   const [comensal, setComensal] = useState(null)
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [resumen, setResumen] = useState(null)
-  const [metodo, setMetodo] = useState('efectivo')
   const [ticket, setTicket] = useState(null)
+  const [errorCobro, setErrorCobro] = useState('')
+  const [cobrando, setCobrando] = useState(false)
 
   const loadBarras = async () => {
     const r = await fetch(`${API_URL}/api/mesas?tipo=barra`)
@@ -76,45 +78,86 @@ export default function Barras() {
     loadResumen(comensal.id)
   }
 
-  const cobrar = async () => {
-    const r = await fetch(`${API_URL}/api/cobros/cobrar-comensal?comensal_id=${comensal.id}&metodo_pago=${metodo}`, { method: 'POST' })
-    setTicket(await r.json())
-    setVista('ticket')
-    loadBarras()
+  // El pago se cierra hasta el final; la cuenta previa solo se imprime.
+  const cobrar = async (pago) => {
+    setCobrando(true)
+    setErrorCobro('')
+    const q = new URLSearchParams({ comensal_id: comensal.id, metodo_pago: pago.metodo_pago })
+    if (pago.codigo_cobro) q.set('codigo_cobro', pago.codigo_cobro)
+    if (pago.monto_recibido != null) q.set('monto_recibido', pago.monto_recibido)
+    try {
+      const r = await fetch(`${API_URL}/api/cobros/cobrar-comensal?${q}`, { method: 'POST' })
+      const data = await r.json()
+      if (!r.ok) {
+        const d = data.detail
+        throw new Error(Array.isArray(d) ? d[0]?.msg || 'Datos inválidos' : d || 'No se pudo cobrar')
+      }
+      setTicket(data)
+      setVista('ticket')
+      loadBarras()
+    } catch (e) {
+      setErrorCobro(e.message)
+    } finally {
+      setCobrando(false)
+    }
   }
 
   const color = (e) => ({ disponible: 'bg-white/40', ocupada: 'bg-red-500/20' }[e] || 'bg-gray-400/40')
 
-  // TICKET
+  // COMPROBANTE (venta ya cerrada)
   if (vista === 'ticket' && ticket) return (
     <Ticket
       subtitulo={`Barra ${barra?.displayNum} — ${ticket.nombre}`}
       items={ticket.pedidos.map(p => ({nombre: p.producto, cantidad: p.cantidad, precio_unitario: p.precio_unitario, subtotal: p.subtotal}))}
       total={ticket.total}
       metodo={ticket.metodo_pago}
+      extras={extrasDePago(ticket)}
+      doneLabel="✅ Listo"
       onDone={() => { setTicket(null); setComensal(null); setResumen(null); setVista('barra'); loadComensales(barra.id) }}
     />
   )
 
-  // COBRO
-  if (vista === 'cobro' && comensal) return (
+  // 1. CONFIRMAR
+  if (vista === 'confirmar' && comensal) return (
     <div className="min-h-screen bg-transparent p-6 flex items-center justify-center">
-      <div className="max-w-2xl w-full bg-white rounded-3xl p-12">
-        <button onClick={() => setVista('comensal')} className="mb-6 bg-gray-600 text-white font-bold py-2 px-4 rounded">← Volver</button>
-        <h1 className="text-5xl font-bold text-green-700 text-center mb-4">💰 Cobro</h1>
-        <p className="text-center text-xl text-gray-600 mb-10">{comensal.nombre}</p>
-        <div className="grid grid-cols-2 gap-6 mb-10">
-          <button onClick={() => setMetodo('efectivo')} className={`p-8 rounded-2xl border-4 ${metodo === 'efectivo' ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 border-gray-200'}`}>
-            <div className="text-6xl mb-3">💵</div><p className="font-bold">EFECTIVO</p>
-          </button>
-          <button onClick={() => setMetodo('tarjeta')} className={`p-8 rounded-2xl border-4 ${metodo === 'tarjeta' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 border-gray-200'}`}>
-            <div className="text-6xl mb-3">💳</div><p className="font-bold">TARJETA</p>
-          </button>
-        </div>
-        <button onClick={cobrar} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Confirmar Cobro</button>
+      <div className="max-w-2xl w-full bg-white rounded-3xl p-12 text-center">
+        <div className="text-7xl mb-6">💰</div>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">¿Generar el cobro de {comensal.nombre}?</h1>
+        <p className="text-gray-500 mb-10">Barra {barra?.displayNum} · Se imprimirá la cuenta. El comensal seguirá abierto hasta registrar el pago.</p>
+        <button onClick={() => { setErrorCobro(''); setVista('cuenta') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, generar cuenta</button>
         <button onClick={() => setVista('comensal')} className="w-full bg-gray-600 text-white font-bold py-4 rounded-xl">← Volver</button>
       </div>
     </div>
+  )
+
+  // 2. CUENTA (aún no se cobra)
+  if (vista === 'cuenta' && comensal && resumen) return (
+    <Ticket
+      subtitulo={`Barra ${barra?.displayNum} — ${comensal.nombre}`}
+      aviso="** CUENTA **"
+      items={resumen.pedidos.map(p => ({
+        nombre: p.producto_nombre,
+        cantidad: p.cantidad,
+        precio_unitario: p.precio_unitario,
+        subtotal: p.cantidad * p.precio_unitario
+      }))}
+      total={resumen.total}
+      onDone={() => setVista('pago')}
+      doneLabel="💳 Registrar pago →"
+      extraBtn={{label: '← Volver', onClick: () => setVista('comensal')}}
+    />
+  )
+
+  // 3-4. MÉTODO + DATOS DEL PAGO
+  if (vista === 'pago' && comensal && resumen) return (
+    <PasosPago
+      total={resumen.total}
+      subtitulo={`Barra ${barra?.displayNum} — ${comensal.nombre}`}
+      onCobrar={cobrar}
+      onCancel={() => setVista('cuenta')}
+      error={errorCobro}
+      cargando={cobrando}
+    />
   )
 
   // AGREGAR PEDIDO
@@ -154,7 +197,7 @@ export default function Barras() {
       <div className="grid grid-cols-2 gap-4">
         <button onClick={() => setVista('pedidos')} className="bg-blue-500 text-white font-bold py-4 rounded-xl">🛒 Agregar</button>
         <button
-          onClick={() => resumen?.pedidos?.length && setVista('cobro')}
+          onClick={() => resumen?.pedidos?.length && setVista('confirmar')}
           className={`font-bold py-4 rounded-xl ${resumen?.pedidos?.length ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-400 cursor-not-allowed'}`}
         >💰 Cobrar</button>
       </div>

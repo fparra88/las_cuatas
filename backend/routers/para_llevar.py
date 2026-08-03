@@ -1,23 +1,29 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from database import get_db
 from models import OrdenLlevar, OrdenLlevarItem, Producto
+from pagos import resolver_pago
+from schemas import MetodoPago
+from tz import iso_utc, rango_dia_utc
 
 router = APIRouter(prefix="/api/para-llevar", tags=["para-llevar"])
 
 class ItemIn(BaseModel):
     producto_id: int
-    cantidad: int
+    cantidad: int = Field(gt=0, le=999)
     # Solo para productos editables: sobrescriben nombre/precio de ESA linea.
     nombre_personalizado: Optional[str] = None
-    precio_unitario: Optional[float] = None
+    precio_unitario: Optional[float] = Field(default=None, ge=0)
 
 class OrdenIn(BaseModel):
-    items: List[ItemIn]
-    metodo_pago: str
+    # min_length=1: antes se creaban ordenes vacias de $0 que ensuciaban el corte.
+    items: List[ItemIn] = Field(min_length=1)
+    metodo_pago: MetodoPago
+    # Tarjeta: obligatorio. Efectivo: opcional (para calcular el cambio).
+    codigo_cobro: Optional[str] = Field(default=None, max_length=50)
+    monto_recibido: Optional[float] = Field(default=None, ge=0)
 
 @router.post("")
 def crear_orden(data: OrdenIn, db: Session = Depends(get_db)):
@@ -37,22 +43,29 @@ def crear_orden(data: OrdenIn, db: Session = Depends(get_db)):
             nombre, precio = p.nombre, p.precio
         total += precio * item.cantidad
         items_build.append(OrdenLlevarItem(producto_nombre=nombre, cantidad=item.cantidad, precio_unitario=precio))
-    orden = OrdenLlevar(total=total, metodo_pago=data.metodo_pago)
+    total = round(total, 2)
+
+    # Mismas reglas que mesas y barras (tarjeta -> codigo, efectivo -> cambio).
+    codigo, recibido, cambio = resolver_pago(
+        data.metodo_pago, data.codigo_cobro, data.monto_recibido, total)
+
+    orden = OrdenLlevar(total=total, metodo_pago=data.metodo_pago,
+                        codigo_cobro=codigo, monto_recibido=recibido)
     db.add(orden)
     db.flush()
     for i in items_build:
         i.orden_id = orden.id
         db.add(i)
     db.commit()
-    return {"id": orden.id, "total": total}
+    return {"id": orden.id, "total": total, "metodo_pago": data.metodo_pago,
+            "codigo_cobro": codigo, "monto_recibido": recibido, "cambio": cambio}
 
 @router.get("")
 def listar_ordenes(fecha: Optional[str] = None, db: Session = Depends(get_db)):
     q = db.query(OrdenLlevar)
     if fecha:
-        d = datetime.strptime(fecha, "%Y-%m-%d").date()
-        start = datetime(d.year, d.month, d.day)
-        end = start + timedelta(days=1)
+        # Mismo dia local que el corte.
+        _, start, end = rango_dia_utc(fecha)
         q = q.filter(OrdenLlevar.fecha_hora >= start, OrdenLlevar.fecha_hora < end)
     ordenes = q.order_by(OrdenLlevar.fecha_hora.desc()).all()
     result = []
@@ -62,7 +75,9 @@ def listar_ordenes(fecha: Optional[str] = None, db: Session = Depends(get_db)):
             "id": o.id,
             "total": o.total,
             "metodo_pago": o.metodo_pago,
-            "fecha_hora": o.fecha_hora.isoformat(),
+            # ISO con 'Z' para que el navegador convierta a hora local.
+            "fecha_hora": iso_utc(o.fecha_hora),
+            "cerrado": o.cierre_id is not None,
             "items": [{"producto_nombre": i.producto_nombre, "cantidad": i.cantidad, "precio_unitario": i.precio_unitario, "subtotal": round(i.cantidad * i.precio_unitario, 2)} for i in items]
         })
     return result
