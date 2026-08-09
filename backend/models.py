@@ -100,6 +100,42 @@ class OrdenLlevarItem(Base):
     cantidad = Column(Integer)
     precio_unitario = Column(Float)
 
+class Ticket(Base):
+    """Comprobante de una venta ya cobrada, sea de mesa, barra o para llevar.
+
+    Folio unico para las tres: antes cobros.id y ordenes_llevar.id corrian por
+    separado, asi que dos ventas distintas podian imprimirse ambas como "#5" y
+    no habia forma de saber a cual se referia un ticket en la mano.
+
+    Guarda el TOTAL y el metodo ya calculados; las lineas viven en TicketItem.
+    """
+    __tablename__ = "tickets"
+    id = Column(Integer, primary_key=True, index=True)   # el folio impreso
+    origen = Column(String, index=True)                  # mesa | barra | llevar
+    subtitulo = Column(String)                           # "Mesa #5", "Barra 2 - Juan", "Para Llevar"
+    total = Column(Float)
+    metodo_pago = Column(String)
+    codigo_cobro = Column(String, nullable=True)
+    monto_recibido = Column(Float, nullable=True)
+    cambio = Column(Float, nullable=True)
+    # Trazabilidad hacia la venta que lo origino (para cuadrar contra el corte).
+    cobro_id = Column(Integer, ForeignKey("cobros.id"), nullable=True)
+    orden_llevar_id = Column(Integer, ForeignKey("ordenes_llevar.id"), nullable=True)
+    fecha_hora = Column(DateTime, default=ahora_utc, index=True)
+
+class TicketItem(Base):
+    """Linea del ticket. Copia (snapshot) del nombre y precio al momento de la
+    venta: NO es FK a productos a proposito. El catalogo se edita en produccion
+    desde la pantalla Productos, y un ticket reimpreso debe mostrar lo que se
+    vendio ese dia, no el nombre/precio que tenga el producto hoy."""
+    __tablename__ = "ticket_items"
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"), index=True)
+    nombre = Column(String)
+    cantidad = Column(Integer)
+    precio_unitario = Column(Float)
+    subtotal = Column(Float)
+
 class CierreCaja(Base):
     __tablename__ = "cierres_caja"
     # Un solo cierre por dia: evita cortes duplicados por doble click.

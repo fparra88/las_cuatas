@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import logo from '../imagenes/logo.png'
 import CorteDia from './CorteDia'
+import Productos from './Productos'
+import Tickets from './Tickets'
 
 const NAV = [
   { key: 'mesas',      label: 'Mesas',      icon: '🍽️' },
@@ -11,6 +13,8 @@ const NAV = [
 
 export default function Sidebar({ seccion, onSeccion }) {
   const [corteOpen, setCorteOpen] = useState(false)
+  const [productosOpen, setProductosOpen] = useState(false)
+  const [ticketsOpen, setTicketsOpen] = useState(false)
 
   return (
     <>
@@ -37,6 +41,20 @@ export default function Sidebar({ seccion, onSeccion }) {
 
         <div className="border-t border-[#2a5555] p-3">
           <button
+            onClick={() => setTicketsOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-3 text-[#c8e6e6] hover:bg-[#3d7777] rounded-lg transition-colors"
+          >
+            <span className="text-xl">🧾</span>
+            <span className="font-bold">Tickets</span>
+          </button>
+          <button
+            onClick={() => setProductosOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-3 text-[#c8e6e6] hover:bg-[#3d7777] rounded-lg transition-colors"
+          >
+            <span className="text-xl">🍽️</span>
+            <span className="font-bold">Productos</span>
+          </button>
+          <button
             onClick={() => setCorteOpen(true)}
             className="w-full flex items-center gap-3 px-3 py-3 text-[#c8e6e6] hover:bg-[#3d7777] rounded-lg transition-colors"
           >
@@ -46,6 +64,8 @@ export default function Sidebar({ seccion, onSeccion }) {
         </div>
       </aside>
 
+      {ticketsOpen && <Tickets onClose={() => setTicketsOpen(false)} />}
+      {productosOpen && <Productos onClose={() => setProductosOpen(false)} />}
       {corteOpen && <CorteDia onClose={() => setCorteOpen(false)} />}
     </>
   )

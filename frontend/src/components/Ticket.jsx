@@ -14,12 +14,15 @@ const fmt = (n) => Number(n || 0).toFixed(2)
 //  metodo     -> 'efectivo' | 'tarjeta' (opcional)
 //  extras     -> [{label, valor}] líneas después del TOTAL (recibido, cambio, código...)
 //  aviso      -> texto destacado bajo el subtítulo (ej "CUENTA — NO ES COMPROBANTE")
+//  folio      -> id del ticket guardado en BD; se imprime para poder reimprimirlo después
+//  fechaHora  -> ISO de la venta. Sin esto usa "ahora", que en una REIMPRESIÓN
+//                mostraría la fecha de hoy en vez de la fecha real de la venta.
 //  onDone     -> callback botón secundario
 //  doneLabel  -> texto botón secundario (default "OK")
 //  extraBtn   -> {label, onClick} botón adicional bajo Imprimir
 export default function Ticket({ subtitulo, items = [], total = 0, metodo, extras = [], aviso,
-                                 onDone, doneLabel = '✅ OK', extraBtn }) {
-  const fecha = new Date()
+                                 folio, fechaHora, onDone, doneLabel = '✅ OK', extraBtn }) {
+  const fecha = fechaHora ? new Date(fechaHora) : new Date()
   return (
     <div className="min-h-screen bg-transparent p-6 flex flex-col items-center print:min-h-0 print:p-0 print:m-0 print:block">
       {/* Área imprimible */}
@@ -31,6 +34,7 @@ export default function Ticket({ subtitulo, items = [], total = 0, metodo, extra
         ))}
 
         <div className="ticket-sep" />
+        {folio != null && <div className="ticket-center ticket-bold">TICKET #{folio}</div>}
         {subtitulo && <div className="ticket-center ticket-bold">{subtitulo}</div>}
         {aviso && <div className="ticket-center ticket-bold">{aviso}</div>}
         <div className="ticket-center ticket-sm">

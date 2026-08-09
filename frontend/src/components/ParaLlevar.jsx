@@ -1,15 +1,18 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { API_URL } from '../config'
 import Ticket from './Ticket'
 import ProductoLibreModal from './ProductoLibreModal'
 import PasosPago, { extrasDePago } from './PasosPago'
+import PinPad from './PinPad'
 import { hoyLocal, horaLocal } from '../fecha'
+import { normalizar } from '../texto'
 
 export default function ParaLlevar() {
   const [tab, setTab] = useState('pedido')
-  const [prods, setProds] = useState([])
+  const [todosProds, setTodosProds] = useState([])
   const [cats, setCats] = useState([])
   const [cat, setCat] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState({})
   const [vista, setVista] = useState('productos')
   const [ticket, setTicket] = useState(null)
@@ -18,6 +21,7 @@ export default function ParaLlevar() {
   const [libre, setLibre] = useState(null)   // producto editable pendiente de capturar
   const [errorCobro, setErrorCobro] = useState('')
   const [cobrando, setCobrando] = useState(false)
+  const [pinAccion, setPinAccion] = useState(null)   // función pendiente de autorizar con código
 
   useEffect(() => {
     const load = async () => {
@@ -29,14 +33,21 @@ export default function ParaLlevar() {
     load()
   }, [])
 
+  // Se trae el catalogo completo una sola vez: la busqueda cruza todas las
+  // categorias sin ir al servidor en cada tecla.
   useEffect(() => {
-    if (!cat) return
     const load = async () => {
-      const r = await fetch(`${API_URL}/api/productos?categoria=${cat}`)
-      setProds(await r.json())
+      const r = await fetch(`${API_URL}/api/productos`)
+      setTodosProds(await r.json())
     }
     load()
-  }, [cat])
+  }, [])
+
+  const prods = useMemo(() => {
+    const q = normalizar(busqueda.trim())
+    if (q) return todosProds.filter(p => normalizar(p.nombre).includes(q))
+    return todosProds.filter(p => p.categoria === cat)
+  }, [todosProds, busqueda, cat])
 
   useEffect(() => {
     if (tab !== 'historial') return
@@ -79,17 +90,16 @@ export default function ParaLlevar() {
     else addToCart(p)
   }
 
+  // Bajar la cantidad hasta 0 quita el producto del carrito: pide codigo.
   const changeQty = (id, delta) => {
-    setCarrito(prev => {
-      const next = { ...prev }
-      const nueva = (next[id]?.cantidad || 0) + delta
-      if (nueva <= 0) {
-        delete next[id]
-      } else {
-        next[id] = { ...next[id], cantidad: nueva }
-      }
-      return next
-    })
+    const nueva = (carrito[id]?.cantidad || 0) + delta
+    if (nueva <= 0) {
+      setPinAccion(() => () => {
+        setCarrito(prev => { const next = { ...prev }; delete next[id]; return next })
+      })
+      return
+    }
+    setCarrito(prev => ({ ...prev, [id]: { ...prev[id], cantidad: nueva } }))
   }
 
   const totalCarrito = Object.values(carrito).reduce((a, i) => a + i.precio * i.cantidad, 0)
@@ -134,7 +144,8 @@ export default function ParaLlevar() {
   // COMPROBANTE (orden ya creada)
   if (vista === 'ticket' && ticket) return (
     <Ticket
-      subtitulo={`Para Llevar #${ticket.id}`}
+      folio={ticket.folio}
+      subtitulo="Para Llevar"
       items={ticket.carritoItems.map(i => ({nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio}))}
       total={ticket.total}
       metodo={ticket.metodo_pago}
@@ -150,33 +161,20 @@ export default function ParaLlevar() {
       <div className="max-w-2xl w-full bg-white rounded-3xl p-12 text-center">
         <div className="text-7xl mb-6">🛍️</div>
         <h1 className="text-4xl font-bold text-gray-800 mb-2">¿Generar el cobro del pedido para llevar?</h1>
-        <p className="text-gray-500 mb-10">{countCarrito} artículo(s) · Se imprimirá la cuenta. El pedido no se registra hasta cerrar el pago.</p>
-        <button onClick={() => { setErrorCobro(''); setVista('cuenta') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, generar cuenta</button>
+        <p className="text-gray-500 mb-10">{countCarrito} artículo(s)</p>
+        <button onClick={() => { setErrorCobro(''); setVista('pago') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, cobrar</button>
         <button onClick={() => setVista('carrito')} className="w-full bg-gray-600 text-white font-bold py-4 rounded-xl">← Volver al carrito</button>
       </div>
     </div>
   )
 
-  // 2. CUENTA (aún no se registra la orden)
-  if (vista === 'cuenta') return (
-    <Ticket
-      subtitulo="Para Llevar"
-      aviso="** CUENTA **"
-      items={Object.values(carrito).map(i => ({nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio}))}
-      total={totalCarrito}
-      onDone={() => setVista('pago')}
-      doneLabel="💳 Registrar pago →"
-      extraBtn={{label: '← Volver al carrito', onClick: () => setVista('carrito')}}
-    />
-  )
-
-  // 3-4. MÉTODO + DATOS DEL PAGO
+  // 2-3. MÉTODO + DATOS DEL PAGO
   if (vista === 'pago') return (
     <PasosPago
       total={totalCarrito}
       subtitulo="Para Llevar"
       onCobrar={confirmar}
-      onCancel={() => setVista('cuenta')}
+      onCancel={() => setVista('confirmar')}
       error={errorCobro}
       cargando={cobrando}
     />
@@ -205,12 +203,19 @@ export default function ParaLlevar() {
       <div className="bg-blue-600 text-white rounded-2xl p-6 mb-6">
         <p className="text-4xl font-bold text-center">TOTAL: ${totalCarrito.toFixed(2)}</p>
       </div>
-      {/* El método de pago ahora se pide después de imprimir la cuenta. */}
       <button
         onClick={() => countCarrito && setVista('confirmar')}
         disabled={!countCarrito}
         className="w-full bg-green-600 text-white font-bold py-4 rounded-xl text-xl disabled:bg-gray-300"
       >💰 Cobrar</button>
+
+      {pinAccion && (
+        <PinPad
+          titulo="Código para eliminar producto"
+          onConfirm={() => { const fn = pinAccion; setPinAccion(null); fn() }}
+          onCancel={() => setPinAccion(null)}
+        />
+      )}
     </div>
   )
 
@@ -223,11 +228,21 @@ export default function ParaLlevar() {
 
       {tab === 'pedido' && (
         <>
-          <div className="flex gap-3 mb-6 flex-wrap">
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="🔍 Buscar producto..."
+            className="w-full border rounded-xl px-4 py-3 mb-4 text-lg"
+          />
+          <div className={`flex gap-3 mb-6 flex-wrap ${busqueda.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
             {cats.map(c => (
               <button key={c} onClick={() => setCat(c)} className={`py-2 px-4 rounded-lg font-bold ${cat === c ? 'bg-blue-600 text-white' : 'bg-white border'}`}>{c}</button>
             ))}
           </div>
+          {busqueda.trim() && prods.length === 0 && (
+            <p className="text-center text-gray-400 py-8">Sin resultados para "{busqueda}".</p>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-32">
             {prods.map(p => (
               <button key={p.id} onClick={() => seleccionar(p)} className="bg-white rounded-2xl p-6 hover:shadow-lg relative">

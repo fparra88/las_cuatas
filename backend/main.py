@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import init_db
-from routers import mesas, pedidos, cobros, productos, para_llevar, comensales, gastos
+from routers import mesas, pedidos, cobros, productos, para_llevar, comensales, gastos, tickets
 
 init_db()
 app = FastAPI(title="Las Cuatas")
@@ -30,6 +30,7 @@ app.include_router(productos.router)
 app.include_router(para_llevar.router)
 app.include_router(comensales.router)
 app.include_router(gastos.router)
+app.include_router(tickets.router)
 
 
 @app.get("/health")

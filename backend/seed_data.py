@@ -171,43 +171,32 @@ PRODUCTO_LIBRE = {
 }
 
 
-def _sync_productos(db):
-    """Sincroniza el catalogo (productos + PRODUCTO_LIBRE) contra la BD en
-    CADA arranque: agrega lo nuevo, actualiza precio/categoria/icono de lo que
-    cambio en el codigo, y reactiva lo que estaba desactivado.
-
-    Lo que se quita de la lista se DESACTIVA (activo=0), nunca se borra: un
-    pedido abierto puede tener una FK a ese producto, y en Postgres un DELETE
-    ahi revienta la foreign key (SQLite no la valida, por eso este bug no se
-    veia en local).
-    """
-    catalogo = productos + [PRODUCTO_LIBRE]
-    existentes = {p.nombre: p for p in db.query(Producto).all()}
-    vistos = set()
-
-    for datos in catalogo:
-        vistos.add(datos["nombre"])
-        editable = 1 if datos is PRODUCTO_LIBRE else 0
-        p = existentes.get(datos["nombre"])
-        if p:
-            p.categoria = datos["categoria"]
-            p.precio = datos["precio"]
-            p.icono = datos.get("icono")
-            p.editable = editable
-            p.activo = 1
-        else:
-            db.add(Producto(**datos, activo=1, editable=editable))
-
-    for nombre, p in existentes.items():
-        if nombre not in vistos and p.activo:
-            p.activo = 0
-
+def _asegurar_producto_libre(db):
+    """Garantiza que exista el producto especial 'Producto Libre' (para cobrar
+    platillos fuera de catalogo). Es lo unico que se toca en cada arranque:
+    el resto del menu se administra 100% desde la pantalla Productos
+    (POST/PUT/DELETE /api/productos en backend/routers/productos.py), no desde
+    este archivo."""
+    existe = db.query(Producto).filter(Producto.nombre == PRODUCTO_LIBRE["nombre"]).first()
+    if existe:
+        if not existe.editable:
+            existe.editable = 1
+            db.commit()
+        return
+    db.add(Producto(**PRODUCTO_LIBRE, activo=1, editable=1))
     db.commit()
 
 
 def run_seed(force=False):
-    """Siembra mesas (solo si no hay ninguna) y sincroniza productos (siempre,
-    ver _sync_productos). force=True fuerza re-crear las mesas tambien."""
+    """Siembra datos iniciales. Mesas y productos se crean SOLO si la tabla
+    respectiva esta vacia (primer deploy) o si force=True.
+
+    Antes esto re-sincronizaba `productos` contra la BD en cada arranque; se
+    quito porque ahora el catalogo se edita en produccion desde la pantalla
+    Productos (Postgres es la fuente de verdad) y esa sincronizacion pisaria
+    los cambios hechos ahi. Este archivo ya solo sirve para el arranque en
+    frio de una base nueva.
+    """
     init_db()
     db = SessionLocal()
     try:
@@ -223,13 +212,21 @@ def run_seed(force=False):
                 db.add(Mesa(numero=100 + i, capacidad=6, tipo="barra", estado="disponible"))
             db.commit()
 
-        _sync_productos(db)
-        return crear_mesas
+        crear_productos = force or db.query(Producto).first() is None
+        if crear_productos:
+            db.query(Producto).delete()
+            for p in productos:
+                db.add(Producto(**p, activo=1))
+            db.commit()
+
+        _asegurar_producto_libre(db)
+        return crear_mesas or crear_productos
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    # Ejecucion manual: fuerza re-crear mesas ademas de sincronizar productos.
+    # Ejecucion manual: fuerza re-crear mesas y re-sembrar productos desde
+    # cero (borra ediciones hechas en la pantalla Productos).
     ok = run_seed(force=True)
-    print("Mesas recreadas + productos sincronizados" if ok else "Productos sincronizados (mesas ya existian)")
+    print("Mesas y productos re-sembrados desde el codigo" if ok else "Sin cambios (ya habia datos)")

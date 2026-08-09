@@ -5,6 +5,7 @@ from database import get_db
 from models import Cobro, Mesa, Pedido, Producto, EstadoMesa, EstadoCobro, OrdenLlevar, Gasto, CierreCaja
 from pagos import resolver_pago
 from schemas import CobroCreate, MetodoPago, TicketGenerado
+from tickets import numero_barra, registrar_ticket
 from tz import a_local, iso_utc, rango_dia_utc
 
 router = APIRouter(prefix="/api/cobros", tags=["cobros"])
@@ -39,12 +40,26 @@ def generar_ticket(cobro: CobroCreate, db: Session = Depends(get_db)):
     db_cobro = Cobro(mesa_id=cobro.mesa_id, total=total, metodo_pago=cobro.metodo_pago,
                      codigo_cobro=codigo, monto_recibido=recibido, estado=EstadoCobro.COMPLETADO)
     db.add(db_cobro)
+    db.flush()   # cobro.id para enlazar el ticket
+
+    # El ticket se guarda ANTES de borrar los pedidos: es la unica copia que
+    # queda del detalle de la venta.
+    ticket = registrar_ticket(
+        db, origen="mesa", subtitulo=f"Mesa #{mesa.numero}", total=total,
+        metodo_pago=cobro.metodo_pago,
+        items=[{"nombre": d["producto"], "cantidad": d["cantidad"],
+                "precio_unitario": d["precio_unitario"], "subtotal": d["subtotal"]} for d in detalles],
+        codigo_cobro=codigo, monto_recibido=recibido, cambio=cambio,
+        cobro_id=db_cobro.id,
+    )
+
     mesa.estado = EstadoMesa.DISPONIBLE
     for p, _ in filas:
         db.delete(p)
     db.commit()
     db.refresh(db_cobro)
-    return TicketGenerado(id=db_cobro.id, numero_mesa=mesa.numero, total=total,
+    db.refresh(ticket)
+    return TicketGenerado(id=db_cobro.id, folio=ticket.id, numero_mesa=mesa.numero, total=total,
                           metodo_pago=cobro.metodo_pago, fecha_hora=db_cobro.fecha_hora,
                           pedidos=detalles, codigo_cobro=codigo,
                           monto_recibido=recibido, cambio=cambio)
@@ -70,18 +85,31 @@ def cobrar_comensal(
     cobro = Cobro(mesa_id=comensal.mesa_id, comensal_id=comensal_id, total=total,
                   metodo_pago=metodo_pago, codigo_cobro=codigo, monto_recibido=recibido)
     db.add(cobro)
+    db.flush()   # cobro.id para enlazar el ticket
+
+    barra = db.query(Mesa).filter(Mesa.id == comensal.mesa_id).first()
+    etiqueta = f"Barra {numero_barra(db, barra)} - {comensal.nombre}" if barra else comensal.nombre
+    # Ticket guardado antes de borrar los pedidos (unica copia del detalle).
+    ticket = registrar_ticket(
+        db, origen="barra", subtitulo=etiqueta, total=total, metodo_pago=metodo_pago,
+        items=[{"nombre": d["producto"], "cantidad": d["cantidad"],
+                "precio_unitario": d["precio_unitario"], "subtotal": d["subtotal"]} for d in detalles],
+        codigo_cobro=codigo, monto_recibido=recibido, cambio=cambio,
+        cobro_id=cobro.id,
+    )
+
     comensal.activo = 0
     for p, _ in pedidos_con_prod:
         db.delete(p)
     db.flush()
     otros = db.query(Comensal).filter(Comensal.mesa_id == comensal.mesa_id, Comensal.activo == 1).count()
-    if otros == 0:
-        barra = db.query(Mesa).filter(Mesa.id == comensal.mesa_id).first()
-        if barra:
-            barra.estado = EstadoMesa.DISPONIBLE
+    if otros == 0 and barra:
+        barra.estado = EstadoMesa.DISPONIBLE
     db.commit()
-    return {"id": cobro.id, "nombre": comensal.nombre, "total": total, "metodo_pago": metodo_pago,
-            "pedidos": detalles, "codigo_cobro": codigo, "monto_recibido": recibido, "cambio": cambio}
+    db.refresh(ticket)
+    return {"id": cobro.id, "folio": ticket.id, "nombre": comensal.nombre, "total": total,
+            "metodo_pago": metodo_pago, "pedidos": detalles, "codigo_cobro": codigo,
+            "monto_recibido": recibido, "cambio": cambio}
 
 def _calcular_corte(fecha: Optional[str], db: Session):
     """Corte del dia de negocio (hora de Guadalajara), solo filas sin cerrar.

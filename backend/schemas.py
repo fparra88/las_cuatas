@@ -63,6 +63,7 @@ class CobroCreate(BaseModel):
 
 class TicketGenerado(BaseModel):
     id: int
+    folio: Optional[int] = None   # id del Ticket guardado (para reimprimir)
     numero_mesa: int
     total: float
     metodo_pago: str

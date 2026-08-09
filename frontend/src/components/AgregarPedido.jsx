@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {API_URL} from '../config'
 import ProductoLibreModal from './ProductoLibreModal'
+import {normalizar} from '../texto'
 
 // Orden e icono por categoria. Las no listadas se muestran al final.
 const CAT_META = {
@@ -31,9 +32,10 @@ const CAT_META = {
 const CAT_ORDER = Object.keys(CAT_META)
 
 export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
-  const [prods, setProds] = useState([])
+  const [todosProds, setTodosProds] = useState([])
   const [cat, setCat] = useState('')
   const [cats, setCats] = useState([])
+  const [busqueda, setBusqueda] = useState('')
   const [libre, setLibre] = useState(null)   // producto editable pendiente de capturar
 
   // Ordena segun CAT_ORDER; desconocidas alfabeticas al final.
@@ -62,14 +64,21 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
     if (!cat && sortedCats.length) setCat(sortedCats[0])
   }, [sortedCats, cat])
 
+  // Se trae el catalogo completo una sola vez: la busqueda cruza todas las
+  // categorias sin ir al servidor en cada tecla.
   useEffect(() => {
-    if(!cat) return
     const load = async () => {
-      const r = await fetch(`${API_URL}/api/productos?categoria=${cat}`)
-      setProds(await r.json())
+      const r = await fetch(`${API_URL}/api/productos`)
+      setTodosProds(await r.json())
     }
     load()
-  }, [cat])
+  }, [])
+
+  const prods = useMemo(() => {
+    const q = normalizar(busqueda.trim())
+    if (q) return todosProds.filter(p => normalizar(p.nombre).includes(q))
+    return todosProds.filter(p => p.categoria === cat)
+  }, [todosProds, busqueda, cat])
 
   const add = async (id, extra = {}) => {
     const base = comensalId
@@ -88,7 +97,16 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
   return (
     <div className="min-h-screen bg-transparent p-6">
       <button onClick={onBack} className="mb-8 bg-gray-600 text-white font-bold py-2 px-4 rounded">← Volver</button>
-      <div className="flex flex-wrap gap-2 mb-8">
+
+      <input
+        type="text"
+        value={busqueda}
+        onChange={e => setBusqueda(e.target.value)}
+        placeholder="🔍 Buscar producto..."
+        className="w-full border rounded-xl px-4 py-3 mb-4 text-lg"
+      />
+
+      <div className={`flex flex-wrap gap-2 mb-8 ${busqueda.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
         {sortedCats.map(c => {
           const activo = cat === c
           return (
@@ -107,6 +125,9 @@ export default function AgregarPedido({mesaId, comensalId, onBack, onAdd}) {
           )
         })}
       </div>
+      {busqueda.trim() && prods.length === 0 && (
+        <p className="text-center text-gray-400 py-8">Sin resultados para "{busqueda}".</p>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {prods.map(p => (
           <button key={p.id} onClick={() => seleccionar(p)} className="bg-white rounded-2xl p-6 hover:shadow-lg">

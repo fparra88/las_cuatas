@@ -3,6 +3,7 @@ import { API_URL } from '../config'
 import AgregarPedido from './AgregarPedido'
 import Ticket from './Ticket'
 import PasosPago, {extrasDePago} from './PasosPago'
+import PinPad from './PinPad'
 
 export default function Barras() {
   const [barras, setBarras] = useState([])
@@ -15,6 +16,7 @@ export default function Barras() {
   const [ticket, setTicket] = useState(null)
   const [errorCobro, setErrorCobro] = useState('')
   const [cobrando, setCobrando] = useState(false)
+  const [pinAccion, setPinAccion] = useState(null)   // función pendiente de autorizar con código
 
   const loadBarras = async () => {
     const r = await fetch(`${API_URL}/api/mesas?tipo=barra`)
@@ -69,12 +71,16 @@ export default function Barras() {
     }
   }
 
+  // Bajar la cantidad hasta 0 elimina el producto del pedido: pide codigo.
   const updateQty = async (pedidoId, nuevaCantidad) => {
     if (nuevaCantidad <= 0) {
-      await fetch(`${API_URL}/api/pedidos/pedido/${pedidoId}`, { method: 'DELETE' })
-    } else {
-      await fetch(`${API_URL}/api/pedidos/pedido/${pedidoId}?cantidad=${nuevaCantidad}`, { method: 'PUT' })
+      setPinAccion(() => async () => {
+        await fetch(`${API_URL}/api/pedidos/pedido/${pedidoId}`, { method: 'DELETE' })
+        loadResumen(comensal.id)
+      })
+      return
     }
+    await fetch(`${API_URL}/api/pedidos/pedido/${pedidoId}?cantidad=${nuevaCantidad}`, { method: 'PUT' })
     loadResumen(comensal.id)
   }
 
@@ -107,6 +113,7 @@ export default function Barras() {
   // COMPROBANTE (venta ya cerrada)
   if (vista === 'ticket' && ticket) return (
     <Ticket
+      folio={ticket.folio}
       subtitulo={`Barra ${barra?.displayNum} — ${ticket.nombre}`}
       items={ticket.pedidos.map(p => ({nombre: p.producto, cantidad: p.cantidad, precio_unitario: p.precio_unitario, subtotal: p.subtotal}))}
       total={ticket.total}
@@ -123,38 +130,20 @@ export default function Barras() {
       <div className="max-w-2xl w-full bg-white rounded-3xl p-12 text-center">
         <div className="text-7xl mb-6">💰</div>
         <h1 className="text-4xl font-bold text-gray-800 mb-2">¿Generar el cobro de {comensal.nombre}?</h1>
-        <p className="text-gray-500 mb-10">Barra {barra?.displayNum} · Se imprimirá la cuenta. El comensal seguirá abierto hasta registrar el pago.</p>
-        <button onClick={() => { setErrorCobro(''); setVista('cuenta') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, generar cuenta</button>
+        <p className="text-gray-500 mb-10">Barra {barra?.displayNum}</p>
+        <button onClick={() => { setErrorCobro(''); setVista('pago') }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl">✅ Sí, cobrar</button>
         <button onClick={() => setVista('comensal')} className="w-full bg-gray-600 text-white font-bold py-4 rounded-xl">← Volver</button>
       </div>
     </div>
   )
 
-  // 2. CUENTA (aún no se cobra)
-  if (vista === 'cuenta' && comensal && resumen) return (
-    <Ticket
-      subtitulo={`Barra ${barra?.displayNum} — ${comensal.nombre}`}
-      aviso="** CUENTA **"
-      items={resumen.pedidos.map(p => ({
-        nombre: p.producto_nombre,
-        cantidad: p.cantidad,
-        precio_unitario: p.precio_unitario,
-        subtotal: p.cantidad * p.precio_unitario
-      }))}
-      total={resumen.total}
-      onDone={() => setVista('pago')}
-      doneLabel="💳 Registrar pago →"
-      extraBtn={{label: '← Volver', onClick: () => setVista('comensal')}}
-    />
-  )
-
-  // 3-4. MÉTODO + DATOS DEL PAGO
+  // 2-3. MÉTODO + DATOS DEL PAGO
   if (vista === 'pago' && comensal && resumen) return (
     <PasosPago
       total={resumen.total}
       subtitulo={`Barra ${barra?.displayNum} — ${comensal.nombre}`}
       onCobrar={cobrar}
-      onCancel={() => setVista('cuenta')}
+      onCancel={() => setVista('confirmar')}
       error={errorCobro}
       cargando={cobrando}
     />
@@ -201,6 +190,14 @@ export default function Barras() {
           className={`font-bold py-4 rounded-xl ${resumen?.pedidos?.length ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-400 cursor-not-allowed'}`}
         >💰 Cobrar</button>
       </div>
+
+      {pinAccion && (
+        <PinPad
+          titulo="Código para eliminar producto"
+          onConfirm={async () => { const fn = pinAccion; setPinAccion(null); await fn() }}
+          onCancel={() => setPinAccion(null)}
+        />
+      )}
     </div>
   )
 

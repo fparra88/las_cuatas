@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from 'react'
 import {API_URL} from '../config'
+import PinPad from './PinPad'
 
 export default function ResumenMesa({mesaId, num, onAdd, onPay, onBack, etiqueta = 'Mesa'}) {
   const [res, setRes] = useState(null)
+  const [pinAccion, setPinAccion] = useState(null)   // función pendiente de autorizar con código
 
   useEffect(() => {
     const load = async () => {
@@ -19,19 +21,21 @@ export default function ResumenMesa({mesaId, num, onAdd, onPay, onBack, etiqueta
     setRes(await r.json())
   }
 
-  const del = async (id) => {
-    if(confirm('¿Eliminar?')) {
+  // Eliminar un producto del pedido pide codigo, sea por el boton ❌ o
+  // bajando la cantidad hasta 0.
+  const del = (id) => {
+    setPinAccion(() => async () => {
       await fetch(`${API_URL}/api/pedidos/pedido/${id}`, {method: 'DELETE'})
       reload()
-    }
+    })
   }
 
   const updateQty = async (id, nuevaCantidad) => {
     if (nuevaCantidad <= 0) {
-      await fetch(`${API_URL}/api/pedidos/pedido/${id}`, {method: 'DELETE'})
-    } else {
-      await fetch(`${API_URL}/api/pedidos/pedido/${id}?cantidad=${nuevaCantidad}`, {method: 'PUT'})
+      del(id)
+      return
     }
+    await fetch(`${API_URL}/api/pedidos/pedido/${id}?cantidad=${nuevaCantidad}`, {method: 'PUT'})
     reload()
   }
 
@@ -66,6 +70,14 @@ export default function ResumenMesa({mesaId, num, onAdd, onPay, onBack, etiqueta
         <button onClick={onAdd} className="bg-blue-500 text-white font-bold py-4 rounded-xl">🛒 Agregar</button>
         <button onClick={onPay} className="bg-green-500 text-white font-bold py-4 rounded-xl">💰 Cobrar</button>
       </div>
+
+      {pinAccion && (
+        <PinPad
+          titulo="Código para eliminar producto"
+          onConfirm={async () => { const fn = pinAccion; setPinAccion(null); await fn() }}
+          onCancel={() => setPinAccion(null)}
+        />
+      )}
     </div>
   )
 }

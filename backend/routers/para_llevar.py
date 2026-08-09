@@ -6,6 +6,7 @@ from database import get_db
 from models import OrdenLlevar, OrdenLlevarItem, Producto
 from pagos import resolver_pago
 from schemas import MetodoPago
+from tickets import registrar_ticket
 from tz import iso_utc, rango_dia_utc
 
 router = APIRouter(prefix="/api/para-llevar", tags=["para-llevar"])
@@ -56,8 +57,18 @@ def crear_orden(data: OrdenIn, db: Session = Depends(get_db)):
     for i in items_build:
         i.orden_id = orden.id
         db.add(i)
+
+    ticket = registrar_ticket(
+        db, origen="llevar", subtitulo="Para Llevar", total=total,
+        metodo_pago=data.metodo_pago,
+        items=[{"nombre": i.producto_nombre, "cantidad": i.cantidad,
+                "precio_unitario": i.precio_unitario} for i in items_build],
+        codigo_cobro=codigo, monto_recibido=recibido, cambio=cambio,
+        orden_llevar_id=orden.id,
+    )
     db.commit()
-    return {"id": orden.id, "total": total, "metodo_pago": data.metodo_pago,
+    db.refresh(ticket)
+    return {"id": orden.id, "folio": ticket.id, "total": total, "metodo_pago": data.metodo_pago,
             "codigo_cobro": codigo, "monto_recibido": recibido, "cambio": cambio}
 
 @router.get("")
