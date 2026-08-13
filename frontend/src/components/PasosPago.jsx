@@ -1,6 +1,13 @@
 import React, {useState} from 'react'
+import TecladoNumerico from './TecladoNumerico'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
+
+// Deja solo digitos, un punto y 2 decimales (el input acepta teclado fisico).
+const limpiarMonto = (v) => {
+  const [ent, ...resto] = v.replace(/[^\d.]/g, '').split('.')
+  return resto.length ? `${ent}.${resto.join('').slice(0, 2)}` : ent
+}
 
 // Pasos de pago compartidos por mesas, barras y para llevar:
 //   metodo -> tarjeta (codigo de terminal) | efectivo (monto recibido + cambio)
@@ -65,8 +72,10 @@ export default function PasosPago({total, subtitulo, onCobrar, onCancel, error, 
           onChange={e => setCodigo(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && codigo.trim() && !cargando && onCobrar({metodo_pago: 'tarjeta', codigo_cobro: codigo.trim()})}
           placeholder="Autorización de la terminal"
-          className="w-full border-4 rounded-xl px-4 py-4 text-2xl font-bold text-center mb-8"
+          className="w-full border-4 rounded-xl px-4 py-4 text-2xl font-bold text-center mb-4"
         />
+        {/* Teclado tactil: el codigo de la terminal es numerico, sin decimales. */}
+        <TecladoNumerico valor={codigo} onChange={setCodigo} decimales={false} maxLargo={12} />
         <button
           onClick={() => onCobrar({metodo_pago: 'tarjeta', codigo_cobro: codigo.trim()})}
           disabled={!codigo.trim() || cargando}
@@ -91,15 +100,29 @@ export default function PasosPago({total, subtitulo, onCobrar, onCancel, error, 
         <label className="block font-bold text-gray-700 mb-2">Monto recibido</label>
         <input
           autoFocus
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={recibido}
-          onChange={e => setRecibido(e.target.value)}
+          // Se acepta teclado fisico, pero filtrado a numero para que coincida
+          // con lo que escribe el teclado tactil.
+          onChange={e => setRecibido(limpiarMonto(e.target.value))}
           onKeyDown={e => e.key === 'Enter' && valido && !cargando && enviar()}
           placeholder="0.00"
           className="w-full border-4 rounded-xl px-4 py-4 text-3xl font-bold text-center mb-4"
         />
+        {/* Teclado tactil para capturar el monto rapido */}
+        <TecladoNumerico valor={recibido} onChange={setRecibido} />
+        {/* Atajos de billete: suma rapida sin teclear */}
+        <div className="grid grid-cols-4 gap-2 mb-6">
+          {[50, 100, 200, 500].map(b => (
+            <button
+              key={b}
+              type="button"
+              onClick={() => setRecibido(fmt((parseFloat(recibido) || 0) + b))}
+              className="bg-green-50 hover:bg-green-100 text-green-700 font-bold py-3 rounded-xl"
+            >+{b}</button>
+          ))}
+        </div>
         {/* Cambio en vivo: el cajero lo ve antes de cerrar */}
         <div className={`rounded-2xl p-6 text-center mb-8 ${valido ? 'bg-green-100' : 'bg-gray-100'}`}>
           <p className="text-sm font-bold text-gray-500 uppercase mb-1">Cambio a devolver</p>

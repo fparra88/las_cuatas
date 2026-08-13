@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import logo from '../imagenes/logo.png'
+import logo from '../imagenes/logo1.png'
 import CorteDia from './CorteDia'
 import Productos from './Productos'
 import Tickets from './Tickets'
@@ -20,7 +20,7 @@ export default function Sidebar({ seccion, onSeccion }) {
     <>
       <aside className="w-56 min-h-screen bg-[#336666] flex flex-col">
         <div className="flex items-center justify-center px-5 py-6 border-b border-[#2a5555]">
-          <img src={logo} alt="Las Cuatas" className="h-20 w-auto object-contain" />
+          <img src={logo} alt="Las Cuatas" className="h-36 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 py-4">
