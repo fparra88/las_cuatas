@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 import { normalizar } from '../texto'
+import { avisar, errorDeRespuesta } from '../avisos'
+import Icono from './Icono'
+import Cargando from './Cargando'
+import Confirmar from './Confirmar'
+import { Modal, BotonBorrar, fmt } from './ui'
 
-const fmt = (n) => Number(n || 0).toFixed(2)
 const VACIO = { nombre: '', categoria: '', precio: '', icono: '', activo: true }
 
 export default function Productos({ onClose }) {
@@ -17,10 +21,16 @@ export default function Productos({ onClose }) {
 
   const load = async () => {
     setLoading(true)
-    // todos=true: incluye inactivos, el admin necesita verlos para reactivarlos.
-    const r = await fetch(`${API_URL}/api/productos?todos=true`)
-    setProductos(await r.json())
-    setLoading(false)
+    try {
+      // todos=true: incluye inactivos, el admin necesita verlos para reactivarlos.
+      const r = await fetch(`${API_URL}/api/productos?todos=true`)
+      if (!r.ok) throw new Error()
+      setProductos(await r.json())
+    } catch {
+      avisar('No se pudo cargar el catálogo', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -37,7 +47,8 @@ export default function Productos({ onClose }) {
     setForm({ id: p.id, nombre: p.nombre, categoria: p.categoria, precio: p.precio, icono: p.icono || '', activo: !!p.activo })
   }
 
-  const pedirConfirmacionGuardar = () => {
+  const pedirConfirmacionGuardar = (e) => {
+    e?.preventDefault()
     if (!form.nombre.trim()) { setError('El nombre no puede estar vacío.'); return }
     if (!form.categoria.trim()) { setError('La categoría no puede estar vacía.'); return }
     const precio = parseFloat(form.precio)
@@ -76,154 +87,138 @@ export default function Productos({ onClose }) {
           })
         }
       }
-      const data = await r.json()
-      if (!r.ok) {
-        const d = data.detail
-        throw new Error(Array.isArray(d) ? d[0]?.msg || 'Datos inválidos' : d || 'No se pudo completar')
-      }
+      if (!r.ok) throw new Error(await errorDeRespuesta(r, 'No se pudo completar'))
+      avisar(confirmando.tipo === 'eliminar' ? `${confirmando.nombre} eliminado` : `${confirmando.nombre.trim()} guardado`)
       setConfirmando(null)
       setForm(null)
       await load()
     } catch (e) {
-      // No se cierra el modal de confirmacion: es donde se muestra el error
+      // No se cierra la confirmacion: es donde se muestra el error
       // (eliminar no tiene un form debajo donde mostrarlo).
-      setError(e.message)
+      setError(e.message === 'Failed to fetch' ? 'Sin conexión con el servidor.' : e.message)
     } finally {
       setGuardando(false)
     }
   }
 
+  const campo = 'w-full h-12 border border-crema-borde rounded-xl px-4 text-base focus:outline-none focus:border-marca'
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative bg-white rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">🍽️ Productos</h2>
-          <div className="flex items-center gap-3">
-            <button onClick={abrirNuevo} className="bg-green-600 text-white font-bold text-sm py-2 px-4 rounded-lg">＋ Nuevo</button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">✕</button>
-          </div>
-        </div>
+    <Modal
+      titulo="Productos"
+      onClose={onClose}
+      ancho="sm:max-w-3xl"
+      acciones={
+        <button onClick={abrirNuevo} className="h-12 px-4 rounded-xl bg-marca text-white font-bold flex items-center gap-1.5 shrink-0">
+          <Icono nombre="mas" grosor={2.2} /><span className="hidden min-[400px]:inline">Nuevo</span>
+        </button>
+      }
+    >
+      <div className="px-4 sm:px-7 pb-6">
+        <label className="flex items-center gap-2.5 h-12 border border-crema-borde rounded-xl px-4 text-tinta-suave mb-3">
+          <Icono nombre="buscar" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar producto"
+            className="flex-1 min-w-0 outline-none text-base text-tinta bg-transparent"
+          />
+        </label>
 
-        <input
-          type="text"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="🔍 Buscar producto..."
-          className="w-full border rounded-xl px-4 py-3 mb-3 text-lg"
-        />
-
-        <div className={`flex gap-2 mb-4 flex-wrap ${busqueda.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
-          <button onClick={() => setCat('')} className={`py-1.5 px-3 rounded-lg text-sm font-bold ${cat === '' ? 'bg-[#336666] text-white' : 'bg-gray-100'}`}>Todas</button>
-          {categorias.map(c => (
-            <button key={c} onClick={() => setCat(c)} className={`py-1.5 px-3 rounded-lg text-sm font-bold ${cat === c ? 'bg-[#336666] text-white' : 'bg-gray-100'}`}>{c}</button>
+        <div className={`flex gap-2 mb-4 overflow-x-auto pb-1 [scrollbar-width:none] ${busqueda.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
+          {['', ...categorias].map(c => (
+            <button
+              key={c || '__todas'} onClick={() => setCat(c)}
+              className={`shrink-0 h-10 px-4 rounded-full text-sm ${cat === c ? 'bg-marca text-white font-bold' : 'border border-crema-borde bg-white font-medium'}`}
+            >{c || 'Todas'}</button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-400 py-8">Cargando...</p>
+          <Cargando />
+        ) : visibles.length === 0 ? (
+          <p className="text-center text-tinta-suave py-8">{busqueda.trim() ? `Sin resultados para "${busqueda}".` : 'Sin productos.'}</p>
         ) : (
-          <div className="space-y-2">
-            {busqueda.trim() && visibles.length === 0 && (
-              <p className="text-center text-gray-400 py-8">Sin resultados para "{busqueda}".</p>
-            )}
+          <div className="flex flex-col gap-2">
             {visibles.map(p => (
-              <div key={p.id} className={`flex justify-between items-center p-3 rounded-xl border ${p.activo ? 'bg-gray-50 border-gray-100' : 'bg-red-50 border-red-100 opacity-60'}`}>
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div key={p.id} className={`flex items-center gap-3 p-2 pl-3 rounded-2xl border ${p.activo ? 'bg-white border-crema-borde' : 'bg-crema border-crema-borde opacity-70'}`}>
+                <button onClick={() => abrirEdicion(p)} className="flex-1 min-w-0 min-h-[52px] flex items-center gap-3 text-left">
                   <span className="text-2xl shrink-0">{p.icono || '🍽️'}</span>
-                  <div className="min-w-0">
-                    <p className="font-bold truncate">{p.nombre}</p>
-                    <p className="text-xs text-gray-500">{p.categoria}{!p.activo && ' · inactivo'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <p className="font-bold w-20 text-right">{p.editable ? 'libre' : `$${fmt(p.precio)}`}</p>
-                  <button onClick={() => abrirEdicion(p)} className="bg-[#336666] text-white font-bold text-sm py-2 px-4 rounded-lg">Editar</button>
-                  <button onClick={() => pedirConfirmacionEliminar(p)} className="text-red-400 hover:text-red-600 text-xl px-1">🗑️</button>
-                </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold truncate">{p.nombre}</span>
+                    <span className="block text-xs text-tinta-suave">
+                      {p.categoria}{!p.activo && <span className="text-cancelado font-bold"> · inactivo</span>}
+                    </span>
+                  </span>
+                  <span className="font-bold shrink-0">{p.editable ? 'libre' : `$${fmt(p.precio)}`}</span>
+                  <Icono nombre="editar" className="w-5 h-5 text-tinta-suave shrink-0" />
+                </button>
+                <BotonBorrar onClick={() => pedirConfirmacionEliminar(p)} label={`Eliminar ${p.nombre}`} />
               </div>
             ))}
-            {visibles.length === 0 && <p className="text-center text-gray-400 py-8">Sin productos.</p>}
           </div>
         )}
       </div>
 
       {/* Form de creacion / edicion */}
       {form && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-4" onClick={() => setForm(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-gray-800 mb-4">{form.id ? 'Editar producto' : 'Nuevo producto'}</h3>
-            {error && <p className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg p-2 mb-3">{error}</p>}
+        <div className="fixed inset-0 bg-black/60 z-[55] flex items-end sm:items-center justify-center sm:p-4" onClick={() => setForm(null)}>
+          <form
+            onSubmit={pedirConfirmacionGuardar}
+            className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 w-full sm:max-w-md shadow-2xl max-h-[95vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-7"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="font-display text-2xl font-bold text-marca-oscuro mb-4">{form.id ? 'Editar producto' : 'Nuevo producto'}</h3>
+            {error && !confirmando && <p role="alert" className="bg-cancelado-claro border border-cancelado-borde text-cancelado-oscuro text-sm font-bold rounded-xl p-3 mb-3">{error}</p>}
 
-            <label className="block text-sm font-bold text-gray-600 mb-1">Nombre</label>
-            <input
-              value={form.nombre}
-              onChange={e => setForm({ ...form, nombre: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
+            <div className="grid grid-cols-[1fr_88px] gap-3 mb-3">
+              <label className="text-sm font-bold">Nombre
+                <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} className={`${campo} mt-1.5`} />
+              </label>
+              <label className="text-sm font-bold">Icono
+                <input value={form.icono} onChange={e => setForm({ ...form, icono: e.target.value })} maxLength={4} placeholder="🍽️" className={`${campo} mt-1.5 text-center text-xl`} />
+              </label>
+            </div>
 
-            <label className="block text-sm font-bold text-gray-600 mb-1">Categoría</label>
-            <input
-              value={form.categoria}
-              onChange={e => setForm({ ...form, categoria: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
+            <label className="block text-sm font-bold mb-3">Categoría
+              <input value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} list="categorias-producto" className={`${campo} mt-1.5`} />
+              <datalist id="categorias-producto">{categorias.map(c => <option key={c} value={c} />)}</datalist>
+            </label>
 
-            <label className="block text-sm font-bold text-gray-600 mb-1">Precio</label>
-            <input
-              type="number" step="0.01" min="0"
-              value={form.precio}
-              onChange={e => setForm({ ...form, precio: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
-
-            <label className="block text-sm font-bold text-gray-600 mb-1">Icono (emoji)</label>
-            <input
-              value={form.icono}
-              onChange={e => setForm({ ...form, icono: e.target.value })}
-              maxLength={4}
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
+            <label className="block text-sm font-bold mb-4">Precio
+              <input type="number" inputMode="decimal" step="0.01" min="0" value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value })} className={`${campo} mt-1.5`} />
+            </label>
 
             {form.id && (
-              <label className="flex items-center gap-2 mb-6 font-bold text-gray-700">
-                <input type="checkbox" checked={form.activo} onChange={e => setForm({ ...form, activo: e.target.checked })} />
+              <label className="flex items-center gap-3 mb-5 font-bold min-h-[48px] px-3 rounded-xl bg-crema">
+                <input type="checkbox" className="w-6 h-6 accent-[#336666]" checked={form.activo} onChange={e => setForm({ ...form, activo: e.target.checked })} />
                 Activo (visible en el menú)
               </label>
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setForm(null)} className="bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">Cancelar</button>
-              <button onClick={pedirConfirmacionGuardar} className="bg-[#336666] text-white font-bold py-3 rounded-xl">Guardar</button>
+              <button type="button" onClick={() => setForm(null)} className="h-14 rounded-xl border border-crema-borde bg-white font-bold text-marca-oscuro">Cancelar</button>
+              <button type="submit" className="h-14 rounded-xl bg-marca text-white font-bold">Guardar</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
-      {/* Confirmacion */}
       {confirmando && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center p-4" onClick={() => !guardando && setConfirmando(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl" onClick={e => e.stopPropagation()}>
-            <p className="text-4xl mb-3">{confirmando.tipo === 'eliminar' ? '🗑️' : '⚠️'}</p>
-            {confirmando.tipo === 'eliminar' ? (
-              <p className="font-bold text-lg text-gray-800 mb-1">¿Estás seguro de eliminar el producto: {confirmando.nombre}?</p>
-            ) : (
-              <>
-                <p className="font-bold text-lg text-gray-800 mb-1">¿Estás seguro de aplicar este cambio al producto: {confirmando.nombre}?</p>
-                <p className="text-sm text-gray-500 mb-6">{confirmando.categoria} · ${fmt(confirmando.precio)}</p>
-              </>
-            )}
-            {error && <p className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg p-2 mb-3">{error}</p>}
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setConfirmando(null)} disabled={guardando} className="bg-gray-200 text-gray-700 font-bold py-3 rounded-xl disabled:opacity-50">Cancelar</button>
-              <button
-                onClick={ejecutar}
-                disabled={guardando}
-                className={`text-white font-bold py-3 rounded-xl disabled:opacity-50 ${confirmando.tipo === 'eliminar' ? 'bg-red-600' : 'bg-[#336666]'}`}
-              >{guardando ? '...' : 'Sí, continuar'}</button>
-            </div>
-          </div>
-        </div>
+        <Confirmar
+          peligro={confirmando.tipo === 'eliminar'}
+          titulo={confirmando.tipo === 'eliminar' ? `¿Eliminar ${confirmando.nombre}?` : `¿Guardar ${confirmando.nombre.trim()}?`}
+          mensaje={confirmando.tipo === 'eliminar'
+            ? 'Desaparece del menú. Los tickets ya vendidos no cambian.'
+            : `${confirmando.categoria.trim()} · $${fmt(confirmando.precio)}`}
+          confirmarLabel={confirmando.tipo === 'eliminar' ? 'Sí, eliminar' : 'Sí, guardar'}
+          cargando={guardando}
+          error={error}
+          onConfirm={ejecutar}
+          onCancel={() => { setConfirmando(null); setError('') }}
+        />
       )}
-    </div>
+    </Modal>
   )
 }

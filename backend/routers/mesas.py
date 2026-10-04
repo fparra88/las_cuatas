@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
-from models import Mesa, EstadoMesa
+from models import Comensal, Mesa, EstadoMesa, Pedido
+from tz import iso_utc
 from schemas import Mesa as MesaSchema
 
 router = APIRouter(prefix="/api/mesas", tags=["mesas"])
@@ -17,7 +19,46 @@ def obtener_mesas(tipo: Optional[str] = None, db: Session = Depends(get_db)):
     q = db.query(Mesa).order_by(Mesa.numero)
     if tipo:
         q = q.filter(Mesa.tipo == tipo)
-    return q.all()
+    mesas = q.all()
+
+    # Cuenta abierta por mesa/barra para las tarjetas (total, platillos y desde
+    # cuando). Dos queries agregados en total, no uno por mesa: la pantalla se
+    # refresca cada 5 s en varias tablets.
+    subtotal = func.sum(Pedido.cantidad * Pedido.precio_unitario)
+    piezas = func.sum(Pedido.cantidad)
+    desde = func.min(Pedido.creado_en)
+    abiertas = {}
+    for mesa_id, total, n, inicio in db.query(Pedido.mesa_id, subtotal, piezas, desde).filter(
+            Pedido.mesa_id.isnot(None)).group_by(Pedido.mesa_id):
+        abiertas[mesa_id] = [total or 0, n or 0, inicio]
+    # Barras: los pedidos cuelgan del comensal, no de la mesa.
+    for mesa_id, total, n, inicio in db.query(Comensal.mesa_id, subtotal, piezas, desde).join(
+            Pedido, Pedido.comensal_id == Comensal.id).filter(
+            Comensal.activo == 1).group_by(Comensal.mesa_id):
+        previo = abiertas.get(mesa_id, [0, 0, None])
+        inicios = [x for x in (previo[2], inicio) if x]
+        abiertas[mesa_id] = [previo[0] + (total or 0), previo[1] + (n or 0),
+                             min(inicios) if inicios else None]
+    comensales = dict(db.query(Comensal.mesa_id, func.count(Comensal.id)).filter(
+        Comensal.activo == 1).group_by(Comensal.mesa_id).all())
+
+    resultado = []
+    for m in mesas:
+        total, n, inicio = abiertas.get(m.id, [0, 0, None])
+        resultado.append({
+            "id": m.id,
+            "numero": m.numero,
+            "capacidad": m.capacidad,
+            "tipo": m.tipo,
+            "estado": m.estado.value if m.estado else None,
+            "creado_en": iso_utc(m.creado_en) if m.creado_en else None,
+            "total_abierto": round(total, 2),
+            "platillos": int(n),
+            # ISO con 'Z': sin ella el navegador lee el UTC como hora local.
+            "abierta_desde": iso_utc(inicio) if inicio else None,
+            "comensales": comensales.get(m.id, 0),
+        })
+    return resultado
 
 @router.get("/{mesa_id}")
 def obtener_mesa(mesa_id: int, db: Session = Depends(get_db)):

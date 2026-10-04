@@ -73,6 +73,15 @@ def registrar_ticket(
     return t
 
 
+def estado_cancelacion(fila) -> dict:
+    """Campos de cancelacion de un Ticket / Cobro / OrdenLlevar para el front."""
+    return {
+        "cancelado": bool(fila.cancelado),
+        "cancelado_en": iso_utc(fila.cancelado_en) if fila.cancelado_en else None,
+        "motivo_cancelacion": fila.motivo_cancelacion,
+    }
+
+
 def serializar_ticket(t: Ticket, items: List[TicketItem]) -> dict:
     """Forma que consume el componente Ticket.jsx del frontend."""
     return {
@@ -86,6 +95,7 @@ def serializar_ticket(t: Ticket, items: List[TicketItem]) -> dict:
         "monto_recibido": t.monto_recibido,
         "cambio": t.cambio,
         "fecha_hora": iso_utc(t.fecha_hora),
+        **estado_cancelacion(t),
         "items": [
             {
                 "nombre": i.nombre,

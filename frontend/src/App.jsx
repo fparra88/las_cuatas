@@ -8,6 +8,7 @@ import Cobro from './components/Cobro'
 import Barras from './components/Barras'
 import ParaLlevar from './components/ParaLlevar'
 import Gastos from './components/Gastos'
+import Avisos from './components/Avisos'
 
 export default function App() {
   const [seccion, setSeccion] = useState('mesas')
@@ -27,7 +28,7 @@ export default function App() {
 
     // seccion === 'mesas'
     if (vista === 'pedidos' && mesa)
-      return <AgregarPedido mesaId={mesa.id} onBack={() => setVista('resumen')} onAdd={() => setVista('resumen')} />
+      return <AgregarPedido mesaId={mesa.id} titulo={`Mesa ${mesa.numero}`} onBack={() => setVista('resumen')} />
     if (vista === 'resumen' && mesa)
       return <ResumenMesa mesaId={mesa.id} num={mesa.numero} onAdd={() => setVista('pedidos')} onPay={() => setVista('cobro')} onBack={() => { setVista('mesas'); setMesa(null) }} />
     if (vista === 'cobro' && mesa)
@@ -42,9 +43,11 @@ export default function App() {
       style={{ backgroundImage: `url(${fondo})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
     >
       <Sidebar seccion={seccion} onSeccion={handleSeccion} />
-      <main className="flex-1 overflow-auto">
+      {/* pb en telefono: deja libre la barra de navegacion inferior */}
+      <main className="flex-1 min-w-0 overflow-x-hidden pb-20 sm:pb-0">
         {renderContent()}
       </main>
+      <Avisos />
     </div>
   )
 }

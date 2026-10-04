@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
-from models import Cobro, Mesa, Pedido, Producto, EstadoMesa, EstadoCobro, OrdenLlevar, Gasto, CierreCaja
+from models import Cobro, Mesa, Pedido, Producto, EstadoMesa, EstadoCobro, OrdenLlevar, Gasto, CierreCaja, Ticket
 from pagos import resolver_pago
 from schemas import CobroCreate, MetodoPago, TicketGenerado
 from tickets import numero_barra, registrar_ticket
@@ -121,9 +122,20 @@ def _calcular_corte(fecha: Optional[str], db: Session):
 
     # outerjoin: Cobro.mesa_id es nullable y un inner join borraba esos cobros
     # del corte (dinero cobrado que no aparecia en ningun lado).
-    cobros = db.query(Cobro, Mesa.tipo).outerjoin(Mesa, Cobro.mesa_id == Mesa.id).filter(
+    todos_cobros = db.query(Cobro, Mesa.tipo).outerjoin(Mesa, Cobro.mesa_id == Mesa.id).filter(
         Cobro.fecha_hora >= start, Cobro.fecha_hora < end, Cobro.cierre_id.is_(None)
     ).all()
+    todas_llevar = db.query(OrdenLlevar).filter(
+        OrdenLlevar.fecha_hora >= start, OrdenLlevar.fecha_hora < end,
+        OrdenLlevar.cierre_id.is_(None)
+    ).all()
+
+    # Las canceladas se apartan: NO suman en ingresos, efectivo ni tarjeta, pero
+    # se reportan aparte para que el cajero vea que existieron.
+    cobros = [c for c in todos_cobros if not c[0].cancelado]
+    llevar = [o for o in todas_llevar if not o.cancelado]
+    cancelados = _resumen_cancelados(
+        db, [c[0] for c in todos_cobros if c[0].cancelado], [o for o in todas_llevar if o.cancelado])
 
     # Todo lo que no es barra cuenta como mesa; asi ningun cobro queda fuera del total.
     barras = [c for c in cobros if c[1] == 'barra']
@@ -133,10 +145,6 @@ def _calcular_corte(fecha: Optional[str], db: Session):
     barras_total = round(sum(c[0].total for c in barras), 2)
     barras_count = len(barras)
 
-    llevar = db.query(OrdenLlevar).filter(
-        OrdenLlevar.fecha_hora >= start, OrdenLlevar.fecha_hora < end,
-        OrdenLlevar.cierre_id.is_(None)
-    ).all()
     llevar_total = round(sum(o.total for o in llevar), 2)
     llevar_count = len(llevar)
 
@@ -173,8 +181,30 @@ def _calcular_corte(fecha: Optional[str], db: Session):
         "tarjeta": {"total": tarjeta_total},
         "neto": neto,
         "total": ingresos,
-        "ocupadas": ocupadas
+        "ocupadas": ocupadas,
+        "cancelados": cancelados,
     }
+
+
+def _resumen_cancelados(db: Session, cobros: list, ordenes: list) -> dict:
+    """Ventas canceladas pendientes de corte, con su folio de ticket. Informativo."""
+    items = []
+    if cobros:
+        tickets = {t.cobro_id: t for t in db.query(Ticket).filter(
+            Ticket.cobro_id.in_([c.id for c in cobros])).all()}
+        for c in cobros:
+            t = tickets.get(c.id)
+            items.append({"folio": t.id if t else None, "subtitulo": t.subtitulo if t else "Mesa",
+                          "total": c.total, "motivo": c.motivo_cancelacion})
+    if ordenes:
+        tickets = {t.orden_llevar_id: t for t in db.query(Ticket).filter(
+            Ticket.orden_llevar_id.in_([o.id for o in ordenes])).all()}
+        for o in ordenes:
+            t = tickets.get(o.id)
+            items.append({"folio": t.id if t else None, "subtitulo": "Para Llevar",
+                          "total": o.total, "motivo": o.motivo_cancelacion})
+    items.sort(key=lambda i: i["folio"] or 0, reverse=True)
+    return {"cantidad": len(items), "total": round(sum(i["total"] for i in items), 2), "items": items}
 
 
 def _serializar_cierre(c: CierreCaja):
@@ -216,8 +246,10 @@ def obtener_cierre(cierre_id: int, db: Session = Depends(get_db)):
     return {
         **_serializar_cierre(c),
         "gastos_items": [{"id": g.id, "descripcion": g.descripcion, "monto": g.monto} for g in gastos],
-        "cobros": db.query(Cobro).filter(Cobro.cierre_id == cierre_id).count(),
-        "ordenes_llevar": db.query(OrdenLlevar).filter(OrdenLlevar.cierre_id == cierre_id).count(),
+        # Las canceladas tambien se marcan con cierre_id (para no quedar pendientes
+        # para siempre), pero no son ventas del corte.
+        "cobros": db.query(Cobro).filter(Cobro.cierre_id == cierre_id, func.coalesce(Cobro.cancelado, 0) == 0).count(),
+        "ordenes_llevar": db.query(OrdenLlevar).filter(OrdenLlevar.cierre_id == cierre_id, func.coalesce(OrdenLlevar.cancelado, 0) == 0).count(),
     }
 
 

@@ -6,7 +6,7 @@ from database import get_db
 from models import OrdenLlevar, OrdenLlevarItem, Producto
 from pagos import resolver_pago
 from schemas import MetodoPago
-from tickets import registrar_ticket
+from tickets import estado_cancelacion, registrar_ticket
 from tz import iso_utc, rango_dia_utc
 
 router = APIRouter(prefix="/api/para-llevar", tags=["para-llevar"])
@@ -89,6 +89,7 @@ def listar_ordenes(fecha: Optional[str] = None, db: Session = Depends(get_db)):
             # ISO con 'Z' para que el navegador convierta a hora local.
             "fecha_hora": iso_utc(o.fecha_hora),
             "cerrado": o.cierre_id is not None,
+            **estado_cancelacion(o),
             "items": [{"producto_nombre": i.producto_nombre, "cantidad": i.cantidad, "precio_unitario": i.precio_unitario, "subtotal": round(i.cantidad * i.precio_unitario, 2)} for i in items]
         })
     return result

@@ -19,7 +19,7 @@ const fmt = (n) => Number(n || 0).toFixed(2)
 //                mostraría la fecha de hoy en vez de la fecha real de la venta.
 //  onDone     -> callback botón secundario
 //  doneLabel  -> texto botón secundario (default "OK")
-//  extraBtn   -> {label, onClick} botón adicional bajo Imprimir
+//  extraBtn   -> {label, onClick, peligro?} botón adicional bajo Imprimir
 export default function Ticket({ subtitulo, items = [], total = 0, metodo, extras = [], aviso,
                                  folio, fechaHora, onDone, doneLabel = '✅ OK', extraBtn }) {
   const fecha = fechaHora ? new Date(fechaHora) : new Date()
@@ -90,10 +90,17 @@ export default function Ticket({ subtitulo, items = [], total = 0, metodo, extra
       </div>
 
       {/* Botones — no se imprimen */}
-      <div className="no-print w-full max-w-xs mt-6">
-        <button onClick={printTicket} className="w-full bg-blue-600 text-white font-bold py-3 mb-2 rounded">🖨️ Imprimir</button>
-        {extraBtn && <button onClick={extraBtn.onClick} className="w-full bg-gray-600 text-white font-bold py-3 mb-2 rounded">{extraBtn.label}</button>}
-        {onDone && <button onClick={onDone} className="w-full bg-green-600 text-white font-bold py-3 rounded">{doneLabel}</button>}
+      <div className="no-print w-full max-w-xs mt-6 flex flex-col gap-2.5">
+        <button onClick={printTicket} className="w-full h-14 bg-marca text-white font-bold rounded-xl text-lg">🖨️ Imprimir</button>
+        {extraBtn && (
+          <button
+            onClick={extraBtn.onClick}
+            className={`w-full h-14 font-bold rounded-xl ${extraBtn.peligro
+              ? 'bg-white text-cancelado border-2 border-cancelado-borde hover:bg-cancelado-claro'
+              : 'bg-white text-marca-oscuro border border-crema-borde'}`}
+          >{extraBtn.label}</button>
+        )}
+        {onDone && <button onClick={onDone} className="w-full h-14 bg-white text-marca-oscuro border border-crema-borde font-bold rounded-xl">{doneLabel}</button>}
       </div>
     </div>
   )

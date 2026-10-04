@@ -1,4 +1,5 @@
 import React, {useState} from 'react'
+import TecladoNumerico from './TecladoNumerico'
 
 // Captura nombre y precio para una sola linea de pedido (producto editable).
 // No modifica el catalogo: lo capturado viaja con el pedido.
@@ -16,41 +17,48 @@ export default function ProductoLibreModal({producto, onConfirm, onCancel}) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-50" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center sm:p-6 z-[60]" onClick={onCancel}>
       <form
         onSubmit={confirmar}
         onClick={e => e.stopPropagation()}
-        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+        className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 w-full sm:max-w-md shadow-2xl max-h-[95vh] overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-7"
       >
-        <p className="text-4xl text-center mb-3">{producto?.icono || '✏️'}</p>
-        <h2 className="font-bold text-lg text-gray-800 mb-6 text-center">Producto libre</h2>
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-4xl">{producto?.icono || '✏️'}</span>
+          <div>
+            <h2 className="font-display text-2xl font-bold text-marca-oscuro">Producto libre</h2>
+            <p className="text-sm text-tinta-suave">Solo para esta línea; el menú no cambia.</p>
+          </div>
+        </div>
 
-        <label className="block text-sm font-semibold text-gray-600 mb-1">Nombre</label>
+        <label className="block text-sm font-bold mb-1.5" htmlFor="libre-nombre">Nombre</label>
         <input
+          id="libre-nombre"
           autoFocus
           value={nombre}
           onChange={e => setNombre(e.target.value)}
           placeholder="Ej. Pastel de cumpleaños"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500"
+          maxLength={80}
+          className="w-full h-14 border border-crema-borde rounded-xl px-4 mb-4 text-lg focus:outline-none focus:border-marca"
         />
 
-        <label className="block text-sm font-semibold text-gray-600 mb-1">Precio</label>
+        <label className="block text-sm font-bold mb-1.5" htmlFor="libre-precio">Precio</label>
         <input
-          type="number"
+          id="libre-precio"
+          type="text"
           inputMode="decimal"
-          step="0.01"
-          min="0"
           value={precio}
-          onChange={e => setPrecio(e.target.value)}
+          onChange={e => setPrecio(e.target.value.replace(/[^\d.]/g, ''))}
           placeholder="0.00"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-blue-500"
+          className="w-full h-14 border border-crema-borde rounded-xl px-4 mb-3 text-2xl font-bold text-center focus:outline-none focus:border-marca"
         />
+        <div className="mb-5"><TecladoNumerico valor={precio} onChange={setPrecio} /></div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">
+          <button type="button" onClick={onCancel} className="h-14 rounded-xl border border-crema-borde bg-white font-bold text-marca-oscuro">
             Cancelar
           </button>
-          <button type="submit" disabled={!valido} className="bg-blue-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">
+          <button type="submit" disabled={!valido} className="h-14 rounded-xl bg-marca text-white font-bold disabled:opacity-50">
             Agregar
           </button>
         </div>

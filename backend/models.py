@@ -73,6 +73,12 @@ class Cobro(Base):
     fecha_hora = Column(DateTime, default=ahora_utc)
     # NULL = pendiente de corte. Con valor = ya quedo dentro de ese cierre.
     cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
+    # 1 = venta cancelada: se conserva el registro pero NO suma en el corte.
+    # Columna plana y no un valor nuevo de EstadoCobro: en Postgres el Enum puede
+    # ser un tipo nativo y agregarle valores requiere ALTER TYPE.
+    cancelado = Column(Integer, default=0)
+    cancelado_en = Column(DateTime, nullable=True)
+    motivo_cancelacion = Column(String, nullable=True)
 
 class Gasto(Base):
     __tablename__ = "gastos"
@@ -91,6 +97,10 @@ class OrdenLlevar(Base):
     monto_recibido = Column(Float, nullable=True)
     fecha_hora = Column(DateTime, default=ahora_utc)
     cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
+    # Igual que en Cobro: cancelada = visible en historial, fuera del corte.
+    cancelado = Column(Integer, default=0)
+    cancelado_en = Column(DateTime, nullable=True)
+    motivo_cancelacion = Column(String, nullable=True)
 
 class OrdenLlevarItem(Base):
     __tablename__ = "ordenes_llevar_items"
@@ -122,6 +132,10 @@ class Ticket(Base):
     cobro_id = Column(Integer, ForeignKey("cobros.id"), nullable=True)
     orden_llevar_id = Column(Integer, ForeignKey("ordenes_llevar.id"), nullable=True)
     fecha_hora = Column(DateTime, default=ahora_utc, index=True)
+    # Copia del estado de la venta ligada, para listar/reimprimir sin joins.
+    cancelado = Column(Integer, default=0)
+    cancelado_en = Column(DateTime, nullable=True)
+    motivo_cancelacion = Column(String, nullable=True)
 
 class TicketItem(Base):
     """Linea del ticket. Copia (snapshot) del nombre y precio al momento de la

@@ -1,4 +1,5 @@
 import React from 'react'
+import Icono from './Icono'
 
 // Teclado numerico libre para capturar cantidades rapido con el dedo.
 // No valida ni confirma nada: solo edita el string que le pasan.
@@ -29,22 +30,21 @@ export default function TecladoNumerico({valor = '', onChange, decimales = true,
   const borrar = () => onChange(valor.slice(0, -1))
   const limpiar = () => onChange('')
 
-  const Tecla = ({children, onClick, tono = 'bg-gray-100 hover:bg-gray-200 text-gray-800'}) => (
-    <button type="button" onClick={onClick} className={`${tono} rounded-xl py-5 text-2xl font-bold active:scale-95 transition`}>
-      {children}
-    </button>
-  )
+  const tecla = 'h-14 sm:h-16 rounded-2xl text-2xl font-bold active:scale-95 transition-transform flex items-center justify-center'
+  const normal = `${tecla} border border-crema-borde bg-[#F8F5EF] hover:bg-crema`
 
   return (
-    <div className="grid grid-cols-3 gap-2 mb-6">
+    <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
       {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => (
-        <Tecla key={n} onClick={() => digitar(n)}>{n}</Tecla>
+        <button key={n} type="button" onClick={() => digitar(n)} className={normal}>{n}</button>
       ))}
       {decimales
-        ? <Tecla onClick={() => digitar('.')}>.</Tecla>
-        : <Tecla onClick={limpiar} tono="bg-red-50 hover:bg-red-100 text-red-600">C</Tecla>}
-      <Tecla onClick={() => digitar('0')}>0</Tecla>
-      <Tecla onClick={borrar} tono="bg-amber-50 hover:bg-amber-100 text-amber-700">⌫</Tecla>
+        ? <button type="button" onClick={() => digitar('.')} className={normal}>.</button>
+        : <button type="button" onClick={limpiar} aria-label="Limpiar" className={`${tecla} bg-cancelado-claro text-cancelado border border-cancelado-borde text-xl`}>C</button>}
+      <button type="button" onClick={() => digitar('0')} className={normal}>0</button>
+      <button type="button" onClick={borrar} aria-label="Borrar dígito" className={`${tecla} text-marca-oscuro hover:bg-crema`}>
+        <Icono nombre="borrarDigito" className="w-7 h-7" />
+      </button>
     </div>
   )
 }

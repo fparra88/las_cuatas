@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from database import get_db
@@ -28,8 +29,17 @@ def crear_comensal(data: ComensalCreate, db: Session = Depends(get_db)):
 
 @router.get("/barra/{barra_id}")
 def listar_comensales(barra_id: int, db: Session = Depends(get_db)):
-    comensales = db.query(Comensal).filter(Comensal.mesa_id == barra_id, Comensal.activo == 1).all()
-    return [{"id": c.id, "nombre": c.nombre} for c in comensales]
+    # order_by: Postgres no garantiza orden sin el y los comensales "brincaban"
+    # de lugar en cada refresco.
+    comensales = db.query(Comensal).filter(
+        Comensal.mesa_id == barra_id, Comensal.activo == 1).order_by(Comensal.id).all()
+    # Cuenta de cada uno en un solo query agregado, para la tarjeta.
+    cuentas = {cid: (total or 0, n or 0) for cid, total, n in db.query(
+        Pedido.comensal_id, func.sum(Pedido.cantidad * Pedido.precio_unitario), func.sum(Pedido.cantidad)
+    ).filter(Pedido.comensal_id.in_([c.id for c in comensales])).group_by(Pedido.comensal_id)} if comensales else {}
+    return [{"id": c.id, "nombre": c.nombre,
+             "total": round(cuentas.get(c.id, (0, 0))[0], 2),
+             "platillos": int(cuentas.get(c.id, (0, 0))[1])} for c in comensales]
 
 @router.delete("/{comensal_id}")
 def eliminar_comensal(comensal_id: int, db: Session = Depends(get_db)):

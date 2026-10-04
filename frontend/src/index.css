@@ -1,7 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body {font-family: system-ui; margin: 0; padding: 0;}
+body {margin: 0; padding: 0; color: #1E2A2A;}
+/* La fuente de pantalla viene de theme.fontFamily.sans (tailwind base); el
+   ticket conserva Courier en .ticket. */
+
+@keyframes aviso-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.aviso-entra { animation: aviso-entra .18s ease-out; }
 
 /* ===== TICKET TÉRMICO POS-58 =====
    El rollo mide 58mm pero el cabezal solo imprime ~48mm (384 puntos a 203dpi).

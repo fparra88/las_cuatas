@@ -41,6 +41,17 @@ _COLUMNAS_NUEVAS = [
     ("ordenes_llevar", "cierre_id", "INTEGER"),
     ("ordenes_llevar", "codigo_cobro", "VARCHAR"),
     ("ordenes_llevar", "monto_recibido", "FLOAT"),
+    # Cancelacion de ventas: el registro se conserva pero no suma en el corte.
+    # DEFAULT 0 rellena las filas historicas (SQLite y Postgres).
+    ("cobros", "cancelado", "INTEGER DEFAULT 0"),
+    ("cobros", "cancelado_en", "TIMESTAMP"),
+    ("cobros", "motivo_cancelacion", "VARCHAR"),
+    ("ordenes_llevar", "cancelado", "INTEGER DEFAULT 0"),
+    ("ordenes_llevar", "cancelado_en", "TIMESTAMP"),
+    ("ordenes_llevar", "motivo_cancelacion", "VARCHAR"),
+    ("tickets", "cancelado", "INTEGER DEFAULT 0"),
+    ("tickets", "cancelado_en", "TIMESTAMP"),
+    ("tickets", "motivo_cancelacion", "VARCHAR"),
 ]
 
 

@@ -1,7 +1,7 @@
 import React, {useState} from 'react'
 import {API_URL} from '../config'
 import Ticket from './Ticket'
-import PasosPago, {extrasDePago} from './PasosPago'
+import PasosPago, {extrasDePago, ConfirmarCobro} from './PasosPago'
 
 // Flujo de cobro de mesa:
 //   confirmar -> PasosPago (metodo + codigo/monto) -> comprobante
@@ -60,17 +60,14 @@ export default function Cobro({mesaId, num, onDone, onBack}) {
 
   // ---- 1. Confirmar ----
   if (paso === 'confirmar') return (
-    <div className="min-h-screen bg-transparent p-6 flex items-center justify-center">
-      <div className="max-w-2xl w-full bg-white rounded-3xl p-12 text-center">
-        <div className="text-7xl mb-6">💰</div>
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">¿Generar el cobro de la Mesa {num}?</h1>
-        {error && <p className="bg-red-50 border border-red-200 text-red-700 font-bold rounded-xl p-3 mb-4">{error}</p>}
-        <button onClick={confirmar} disabled={cargando} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2 text-xl disabled:bg-gray-300">
-          {cargando ? 'Cargando...' : '✅ Sí, cobrar'}
-        </button>
-        <button onClick={onBack} className="w-full bg-gray-600 text-white font-bold py-4 rounded-xl">← Volver</button>
-      </div>
-    </div>
+    <ConfirmarCobro
+      titulo={`¿Generar el cobro de la Mesa ${num}?`}
+      onSi={confirmar}
+      onNo={onBack}
+      noLabel="Ver cuenta"
+      cargando={cargando}
+      error={error}
+    />
   )
 
   // ---- 2-3. Método + datos del pago ----
@@ -100,7 +97,7 @@ export default function Cobro({mesaId, num, onDone, onBack}) {
       metodo={ticket.metodo_pago}
       extras={extrasDePago(ticket)}
       onDone={onDone}
-      doneLabel="✅ Listo"
+      doneLabel="Listo"
     />
   )
 }
