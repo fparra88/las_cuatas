@@ -5,6 +5,7 @@ import { avisar, errorDeRespuesta } from '../avisos'
 import Icono from './Icono'
 import Cargando from './Cargando'
 import Confirmar from './Confirmar'
+import GastosFijos from './GastosFijos'
 
 export default function Gastos() {
   const [gastos, setGastos] = useState(null)
@@ -75,6 +76,8 @@ export default function Gastos() {
       <div className="max-w-2xl mx-auto">
         <h2 className="font-display text-4xl font-bold text-marca-oscuro mb-6 bg-white/85 rounded-2xl px-5 py-3 inline-block">Gastos</h2>
 
+        <GastosFijos fecha={fecha} recarga={gastos} />
+
         {/* Formulario nuevo gasto */}
         <div className="bg-white rounded-3xl border border-crema-borde p-6 mb-5">
           <h3 className="font-bold text-xl mb-4">Registrar gasto</h3>
@@ -135,15 +138,21 @@ export default function Gastos() {
               {gastos.map(g => (
                 <div key={g.id} className="bg-white rounded-2xl border border-crema-borde pl-5 pr-3 py-3 flex justify-between items-center gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold truncate">{g.descripcion}</p>
+                    <p className="font-bold truncate">
+                      {g.descripcion}
+                      {g.fijo && <span className="ml-2 align-middle text-xs font-bold uppercase tracking-wide bg-crema text-tinta-suave rounded-md px-2 py-0.5">Fijo</span>}
+                    </p>
                     <p className="text-sm text-tinta-suave">{horaLocal(g.fecha_hora)}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <p className="font-bold text-cancelado text-xl">${g.monto.toFixed(2)}</p>
-                    <button onClick={() => setPorEliminar(g)} aria-label={`Eliminar gasto ${g.descripcion}`}
-                            className="w-12 h-12 rounded-xl border border-cancelado-borde bg-cancelado-claro text-cancelado flex items-center justify-center">
-                      <Icono nombre="basura" className="w-[22px] h-[22px]" />
-                    </button>
+                    {/* Los fijos los crea el corte: ya estan cerrados, el backend los rechazaria (409). */}
+                    {!g.fijo && (
+                      <button onClick={() => setPorEliminar(g)} aria-label={`Eliminar gasto ${g.descripcion}`}
+                              className="w-12 h-12 rounded-xl border border-cancelado-borde bg-cancelado-claro text-cancelado flex items-center justify-center">
+                        <Icono nombre="basura" className="w-[22px] h-[22px]" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

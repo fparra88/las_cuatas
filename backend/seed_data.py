@@ -1,5 +1,5 @@
 from database import SessionLocal, init_db
-from models import Mesa, Producto
+from models import Mesa, Producto, GastoFijo
 
 productos = [
     # GUISADOS
@@ -187,6 +187,20 @@ def _asegurar_producto_libre(db):
     db.commit()
 
 
+GASTOS_FIJOS = ["Renta", "Sueldos"]
+
+
+def _asegurar_gastos_fijos(db):
+    """Crea Renta y Sueldos (monto 0) si faltan. Nunca toca el monto: se edita
+    desde la pantalla Gastos y Postgres es la fuente de verdad."""
+    existentes = {g.nombre for g in db.query(GastoFijo).all()}
+    faltan = [n for n in GASTOS_FIJOS if n not in existentes]
+    for nombre in faltan:
+        db.add(GastoFijo(nombre=nombre, monto_diario=0))
+    if faltan:
+        db.commit()
+
+
 def run_seed(force=False):
     """Siembra datos iniciales. Mesas y productos se crean SOLO si la tabla
     respectiva esta vacia (primer deploy) o si force=True.
@@ -220,6 +234,7 @@ def run_seed(force=False):
             db.commit()
 
         _asegurar_producto_libre(db)
+        _asegurar_gastos_fijos(db)
         return crear_mesas or crear_productos
     finally:
         db.close()

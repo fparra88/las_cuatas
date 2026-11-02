@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
 from models import Cobro, Mesa, Pedido, Producto, EstadoMesa, EstadoCobro, OrdenLlevar, Gasto, CierreCaja, Ticket
+from gastos_fijos import fijos_del_dia, saldo_semana
 from pagos import resolver_pago
 from schemas import CobroCreate, MetodoPago, TicketGenerado
 from tickets import numero_barra, registrar_ticket
-from tz import a_local, iso_utc, rango_dia_utc
+from datetime import timedelta
+from tz import a_local, ahora_utc, iso_utc, rango_dia_utc
 
 router = APIRouter(prefix="/api/cobros", tags=["cobros"])
 
@@ -151,8 +153,16 @@ def _calcular_corte(fecha: Optional[str], db: Session):
     gastos_q = db.query(Gasto).filter(
         Gasto.fecha_hora >= start, Gasto.fecha_hora < end, Gasto.cierre_id.is_(None)
     ).all()
-    gastos_total = round(sum(g.monto for g in gastos_q), 2)
-    gastos_items = [{"id": g.id, "descripcion": g.descripcion, "monto": g.monto} for g in gastos_q]
+    gastos_items = [{"id": g.id, "descripcion": g.descripcion, "monto": g.monto,
+                     "fijo": g.gasto_fijo_id is not None} for g in gastos_q]
+    # Renta/Sueldos de lunes a viernes: se descuentan como un gasto mas. En el
+    # preview aun no existen como fila (las crea efectuar_corte), por eso id None.
+    # Si el dia ya tiene corte no se vuelven a sumar.
+    ya_cerrado = db.query(CierreCaja).filter(CierreCaja.fecha == d.isoformat()).first()
+    if not ya_cerrado:
+        gastos_items += [{"id": None, "descripcion": f.nombre, "monto": f.monto_diario, "fijo": True}
+                         for f in fijos_del_dia(d, db)]
+    gastos_total = round(sum(g["monto"] for g in gastos_items), 2)
 
     # Desglose por metodo de pago (cobros mesas/barras + ordenes para llevar)
     efectivo_bruto = round(
@@ -176,13 +186,14 @@ def _calcular_corte(fecha: Optional[str], db: Session):
         "barras": {"total": barras_total, "cantidad": barras_count},
         "llevar": {"total": llevar_total, "cantidad": llevar_count},
         "ingresos": ingresos,
-        "gastos": {"total": gastos_total, "cantidad": len(gastos_q), "items": gastos_items},
+        "gastos": {"total": gastos_total, "cantidad": len(gastos_items), "items": gastos_items},
         "efectivo": {"bruto": efectivo_bruto, "neto": efectivo_neto},
         "tarjeta": {"total": tarjeta_total},
         "neto": neto,
         "total": ingresos,
         "ocupadas": ocupadas,
         "cancelados": cancelados,
+        "semana": saldo_semana(d, db),
     }
 
 
@@ -290,6 +301,13 @@ def efectuar_corte(fecha: Optional[str] = None, db: Session = Depends(get_db)):
         db.query(modelo).filter(
             modelo.fecha_hora >= start, modelo.fecha_hora < end, modelo.cierre_id.is_(None)
         ).update({"cierre_id": cierre.id}, synchronize_session=False)
+
+    # Gastos fijos del dia: se insertan DESPUES del update de arriba y ya con
+    # cierre_id. El monto es copia del monto_diario de hoy (cambiarlo despues no
+    # altera este corte). fecha_hora dentro del dia aunque se corte uno pasado.
+    for f in fijos_del_dia(d, db):
+        db.add(Gasto(descripcion=f.nombre, monto=f.monto_diario, gasto_fijo_id=f.id,
+                     cierre_id=cierre.id, fecha_hora=min(ahora_utc(), end - timedelta(seconds=1))))
 
     db.commit()
     db.refresh(cierre)

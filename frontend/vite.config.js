@@ -16,4 +16,10 @@ export default defineConfig({
       '/api': 'http://localhost:8000',
     },
   },
+  // Tests (npm test). jsdom simula el navegador; fetch se mockea en cada test.
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })

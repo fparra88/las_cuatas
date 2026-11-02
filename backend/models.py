@@ -87,6 +87,20 @@ class Gasto(Base):
     monto = Column(Float)
     fecha_hora = Column(DateTime, default=ahora_utc)
     cierre_id = Column(Integer, ForeignKey("cierres_caja.id"), nullable=True, index=True)
+    # Lo llena el corte cuando la fila es la aplicacion diaria de un gasto fijo
+    # (Renta, Sueldos). NULL = gasto normal capturado por el cajero.
+    gasto_fijo_id = Column(Integer, ForeignKey("gastos_fijos.id"), nullable=True)
+
+class GastoFijo(Base):
+    """Gasto que se descuenta solo en cada corte de lunes a viernes.
+
+    monto_diario se edita desde la pantalla Gastos; el corte copia el monto a
+    una fila de `gastos` (snapshot), asi cambiarlo no altera cortes viejos.
+    """
+    __tablename__ = "gastos_fijos"
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, unique=True)
+    monto_diario = Column(Float, default=0)
 
 class OrdenLlevar(Base):
     __tablename__ = "ordenes_llevar"

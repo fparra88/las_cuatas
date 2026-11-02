@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from pydantic import BaseModel, Field
 from database import get_db
-from models import Gasto
-from tz import iso_utc, rango_dia_utc
+from models import Gasto, GastoFijo
+from gastos_fijos import saldo_semana
+from tz import iso_utc, parse_fecha, rango_dia_utc
 
 router = APIRouter(prefix="/api/gastos", tags=["gastos"])
 
@@ -12,6 +13,10 @@ class GastoCreate(BaseModel):
     descripcion: str = Field(min_length=1, max_length=200)
     # gt=0: un gasto negativo inflaba el efectivo neto del corte.
     monto: float = Field(gt=0)
+
+class GastoFijoUpdate(BaseModel):
+    # ge=0: en 0 el fijo simplemente no se aplica en el corte.
+    monto_diario: float = Field(ge=0)
 
 @router.post("")
 def crear_gasto(data: GastoCreate, db: Session = Depends(get_db)):
@@ -28,7 +33,23 @@ def _serializar(g: Gasto):
     return {"id": g.id, "descripcion": g.descripcion, "monto": g.monto,
             # ISO con 'Z': sin la Z el navegador leia el UTC como hora local (-6h).
             "fecha_hora": iso_utc(g.fecha_hora),
-            "cerrado": g.cierre_id is not None}
+            "cerrado": g.cierre_id is not None,
+            "fijo": g.gasto_fijo_id is not None}
+
+@router.get("/fijos")
+def listar_fijos(fecha: Optional[str] = None, db: Session = Depends(get_db)):
+    fijos = db.query(GastoFijo).order_by(GastoFijo.id).all()
+    return {"fijos": [{"id": f.id, "nombre": f.nombre, "monto_diario": f.monto_diario or 0} for f in fijos],
+            "semana": saldo_semana(parse_fecha(fecha), db)}
+
+@router.put("/fijos/{fijo_id}")
+def actualizar_fijo(fijo_id: int, data: GastoFijoUpdate, db: Session = Depends(get_db)):
+    f = db.query(GastoFijo).filter(GastoFijo.id == fijo_id).first()
+    if not f:
+        raise HTTPException(status_code=404, detail="Gasto fijo no encontrado")
+    f.monto_diario = round(data.monto_diario, 2)
+    db.commit()
+    return {"id": f.id, "nombre": f.nombre, "monto_diario": f.monto_diario}
 
 @router.get("")
 def listar_gastos(fecha: Optional[str] = None, db: Session = Depends(get_db)):

@@ -65,6 +65,7 @@ export default function CorteDia({ onClose }) {
   }, [imprimir])
 
   const cancelados = data?.cancelados || { cantidad: 0, total: 0, items: [] }
+  const semana = data?.semana
 
   return (
     <Modal titulo="Corte del día" onClose={onClose} ancho="sm:max-w-md">
@@ -116,13 +117,27 @@ export default function CorteDia({ onClose }) {
                   <p className="text-center text-tinta-suave py-4 text-sm">Sin gastos registrados</p>
                 ) : (
                   data.gastos.items.map(g => (
-                    <div key={g.id} className="flex justify-between px-4 py-2.5 border-b border-crema-linea last:border-0 text-sm">
-                      <span>{g.descripcion}</span>
+                    // Los fijos del preview aun no existen como fila: id null.
+                    <div key={g.id ?? `fijo-${g.descripcion}`} className="flex justify-between px-4 py-2.5 border-b border-crema-linea last:border-0 text-sm">
+                      <span>{g.descripcion}{g.fijo && <span className="ml-2 text-xs font-bold uppercase text-tinta-suave">fijo</span>}</span>
                       <span className="font-bold text-cancelado">−${fmt(g.monto)}</span>
                     </div>
                   ))
                 )}
               </div>
+
+              {/* Apartado semanal de renta + sueldos; el viernes es lo que se paga. */}
+              {semana && semana.total_con_hoy > 0 && (
+                <div className={`rounded-2xl p-4 mb-4 flex justify-between items-center gap-3 ${semana.es_viernes ? 'bg-marca-oscuro text-white' : 'bg-crema'}`}>
+                  <div>
+                    <p className="font-bold">{semana.es_viernes ? 'A pagar hoy: renta + sueldos' : 'Apartado de la semana'}</p>
+                    <p className={`text-xs ${semana.es_viernes ? 'opacity-80' : 'text-tinta-suave'}`}>
+                      {semana.items.map(i => `${i.nombre} $${fmt(i.total_con_hoy)}`).join(' · ')}
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold shrink-0">${fmt(semana.total_con_hoy)}</p>
+                </div>
+              )}
 
               {/* Desglose por método de pago */}
               <div className="flex flex-col gap-2 text-[15px] mb-4">
@@ -227,6 +242,14 @@ export default function CorteDia({ onClose }) {
             <div className="ticket-item-linea"><span>Tarjeta (info)</span><span>${fmt(data.tarjeta.total)}</span></div>
             {cancelados.cantidad > 0 && (
               <div className="ticket-item-linea ticket-sm"><span>Cancelados ({cancelados.cantidad}) no suman</span><span>${fmt(cancelados.total)}</span></div>
+            )}
+            {semana && semana.total_con_hoy > 0 && (
+              <>
+                <div className="ticket-sep" />
+                <div className={`ticket-item-linea${semana.es_viernes ? ' ticket-bold' : ''}`}>
+                  <span>{semana.es_viernes ? 'A PAGAR renta+sueldos' : 'Apartado semana'}</span><span>${fmt(semana.total_con_hoy)}</span>
+                </div>
+              </>
             )}
             <div className="ticket-sep" />
             <div className="ticket-total"><span>NETO</span><span>${fmt(data.neto)}</span></div>

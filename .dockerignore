@@ -24,3 +24,7 @@ backend/static
 **/*.db
 **/*.sqlite
 **/*.sqlite3
+
+# Tests (no van en la imagen)
+backend/tests
+**/.pytest_cache

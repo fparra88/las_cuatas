@@ -1,0 +1,4 @@
+# Solo desarrollo/tests: NO se instala en la imagen de produccion.
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27

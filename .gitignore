@@ -37,3 +37,6 @@ backend/static/
 Thumbs.db
 *.log
 CLAUDE.MD
+
+# ---- Tests ----
+.pytest_cache/

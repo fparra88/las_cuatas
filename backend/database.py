@@ -38,6 +38,7 @@ _COLUMNAS_NUEVAS = [
     ("cobros", "codigo_cobro", "VARCHAR"),
     ("cobros", "monto_recibido", "FLOAT"),
     ("gastos", "cierre_id", "INTEGER"),
+    ("gastos", "gasto_fijo_id", "INTEGER"),
     ("ordenes_llevar", "cierre_id", "INTEGER"),
     ("ordenes_llevar", "codigo_cobro", "VARCHAR"),
     ("ordenes_llevar", "monto_recibido", "FLOAT"),
